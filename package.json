@@ -1,0 +1,10 @@
+{
+  "name": "badminton-tcs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"tests/*.test.js\"",
+    "dev": "npx wrangler@4 pages dev site",
+    "deploy": "npx wrangler@4 pages deploy site --project-name badminton-tcs-2026 --branch main"
+  }
+}

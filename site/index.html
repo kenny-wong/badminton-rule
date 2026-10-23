@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Badminton Tournament T&amp;Cs 2026</title>
+  <meta name="description" content="An unofficial, searchable guide to the Badminton England 2026 Tournament Terms & Conditions matrix, with an entry eligibility checker. In English, 繁體中文, 日本語 and Français.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <!-- Elements with data-i18n* attributes are re-labelled by app.js in the chosen language. -->
+  <a class="skip" href="#view" data-i18n="site.skip">Skip to content</a>
+  <header class="masthead">
+    <div class="wrap masthead-inner">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
+          <g transform="rotate(-30 32 32)" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 8 L24.5 42 M51 8 L39.5 42"/>
+            <path d="M13 8 Q32 14.5 51 8"/>
+            <path d="M22.5 10.5 L28.5 42 M32 11.5 V42 M41.5 10.5 L35.5 42"/>
+            <path d="M16.3 18.5 Q32 24 47.7 18.5"/>
+            <path class="logo-cork" d="M22 42 H42 V45 A10 10 0 0 1 22 45 Z"/>
+          </g>
+        </svg>
+        <div>
+          <p class="eyebrow" data-i18n="site.eyebrow">Unofficial guide · 2026 season</p>
+          <h1 data-i18n="site.title">Tournament T&amp;Cs 2026</h1>
+          <p class="lede" data-i18n="site.lede">Badminton England’s tournament terms &amp; conditions matrix, tier by tier and rule by rule.</p>
+        </div>
+      </div>
+      <label class="lang">
+        <span class="lang-label" data-i18n="site.language">Language</span>
+        <select id="lang-select"></select>
+      </label>
+      <form class="site-search" role="search" id="search-form">
+        <label class="visually-hidden" for="search" data-i18n="site.searchLabel">Search the rules</label>
+        <input id="search" type="search" placeholder="Search rules, e.g. “rest period” or “grade E”" data-i18n-placeholder="site.searchPlaceholder" autocomplete="off">
+      </form>
+    </div>
+    <nav class="wrap tabs" aria-label="Sections" data-i18n-aria="tab.navLabel">
+      <a href="#/grades" data-tab="grades" data-i18n="tab.grades">Grades</a>
+      <a href="#/tier" data-tab="tier" data-i18n="tab.tier">Tiers</a>
+      <a href="#/compare" data-tab="compare" data-i18n="tab.compare">Compare</a>
+      <a href="#/check" data-tab="check" data-i18n="tab.check">Can I enter?</a>
+      <a href="#/groups" data-tab="groups" data-i18n="tab.groups">Groups</a>
+      <a href="#/notes" data-tab="notes" data-i18n="tab.notes">Notes</a>
+    </nav>
+    <div class="net" aria-hidden="true"></div>
+  </header>
+
+  <main id="view" class="wrap" tabindex="-1">
+    <p class="loading" data-i18n="site.loading">Loading the rules…</p>
+  </main>
+
+  <footer class="wrap footer">
+    <p id="footer-text">Not affiliated with or endorsed by Badminton England. Transcribed from the
+      <a id="source-link" href="https://images.gc.badmintonenglandservices.co.uk/5e260d50-f15d-11f0-86c0-6b312a596c98.pdf" rel="noopener">2026 Tournament Terms &amp; Conditions (PDF)</a>;
+      the PDF and the BE regulations are the authority if anything here differs.</p>
+  </footer>
+</body>
+</html>

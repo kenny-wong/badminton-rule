@@ -1,0 +1,5 @@
+# Wrangler's local cache (holds Cloudflare account details)
+.wrangler/
+node_modules/
+.DS_Store
+Thumbs.db

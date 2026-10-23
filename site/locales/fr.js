@@ -197,6 +197,8 @@ export default {
   'groups.exPoints': 'Départage aux points',
   'groups.clear': 'Effacer les scores',
   'groups.clearNames': 'Effacer les noms',
+  'groups.clearRow': 'Effacer',
+  'groups.clearRowLabel': 'Effacer les scores du match {a} contre {b}',
   'groups.ownHint': 'Les entrées avec vos joueurs enregistrés sont surlignées.',
   'groups.outlookTitle': 'Ce qu’il faut pour se qualifier',
   'groups.outlookFor': 'Pour',

@@ -435,6 +435,8 @@ input[type="text"]:focus-visible { outline: 3px solid var(--focus); outline-offs
 .calc-matches .side.win::after { content: " ✓"; color: var(--yes); }
 .calc-matches .side.loss::after { content: " ✕"; color: var(--no); }
 .game-cell { white-space: nowrap; }
+.calc-matches .row-clear-cell { width: 1%; white-space: nowrap; }
+.calc-matches .row-clear { font-size: 0.85rem; padding: 2px 4px; }
 .score-input {
   width: 3.4em; min-height: 36px; padding: 4px 6px; text-align: center; font: inherit;
   color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
@@ -686,7 +688,9 @@ input[type="date"], select {
   .calc-matches tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 6px; padding: 8px; border-bottom: 1px solid var(--border); }
   .calc-matches tbody tr:last-child { border-bottom: 0; }
   .calc-matches th, .calc-matches td { border: 0; padding: 0; }
-  .calc-matches .pair { grid-column: 1 / -1; }
+  .calc-matches .pair { grid-column: 1 / 3; white-space: normal; }
+  /* The row's clear button sits at the right of the pairing line. */
+  .calc-matches .row-clear-cell { grid-row: 1; grid-column: 3; justify-self: end; width: auto; }
   .calc-matches .game-cell[data-label]::before { content: attr(data-label); display: block; font-size: 0.72rem; color: var(--muted); }
   .score-input { width: 2.9em; padding: 4px 2px; }
   /* Standings: difference under the totals, tighter cells, so the table fits a phone. */

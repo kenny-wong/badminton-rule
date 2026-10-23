@@ -198,6 +198,8 @@ export default {
   'groups.exPoints': 'Down to points',
   'groups.clear': 'Clear scores',
   'groups.clearNames': 'Clear names',
+  'groups.clearRow': 'Clear',
+  'groups.clearRowLabel': 'Clear the scores of {a} v {b}',
   'groups.ownHint': 'Entries with your saved players are highlighted.',
   'groups.outlookTitle': 'What it takes to go through',
   'groups.outlookFor': 'For',

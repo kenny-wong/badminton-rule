@@ -198,6 +198,8 @@ export default {
   'groups.exPoints': '得失点差で決着',
   'groups.clear': 'スコアをクリア',
   'groups.clearNames': '名前をクリア',
+  'groups.clearRow': 'クリア',
+  'groups.clearRowLabel': '{a}対{b}のスコアをクリア',
   'groups.ownHint': '保存済みの選手を含むエントリーは強調表示されます。',
   'groups.outlookTitle': 'グループ突破の条件',
   'groups.outlookFor': '対象',

@@ -748,6 +748,25 @@ function scoreInput(i, j, game, side) {
   });
 }
 
+/** Clears one match's scores in place, leaving the other matches as they are. */
+function clearRowButton(i, j) {
+  const players = calcPlayers();
+  return h('button', {
+    type: 'button', class: 'link-button row-clear',
+    'aria-label': t('groups.clearRowLabel', { a: players[i].name, b: players[j].name }),
+    onclick: (e) => {
+      delete calc.scores[`${i}-${j}`];
+      const row = e.currentTarget.closest('tr');
+      row.querySelectorAll('.score-input').forEach((input) => { input.value = ''; });
+      calc.example = null;
+      markExample();
+      markWinners();
+      drawGroupResult();
+      row.querySelector('.score-input')?.focus();
+    },
+  }, t('groups.clearRow'));
+}
+
 /** Shows which example (if any) is on screen without redrawing the form. */
 function markExample() {
   document.querySelectorAll('.chip-button[data-example]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.example === calc.example)));
@@ -789,12 +808,14 @@ function drawGroupInputs() {
           } }, t('groups.clear'))),
         h('div', { class: 'table-scroll' }, h('table', { class: 'data-table calc-matches' },
           h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, ''),
-            Array.from({ length: gameCount }, (_, g) => h('th', { scope: 'col' }, gameCount > 1 ? t('groups.game', { n: g + 1 }) : '')))),
+            Array.from({ length: gameCount }, (_, g) => h('th', { scope: 'col' }, gameCount > 1 ? t('groups.game', { n: g + 1 }) : '')),
+            h('th', { scope: 'col' }, ''))),
           h('tbody', {}, pairings(calc.size).map(([i, j]) => h('tr', { class: isOwnEntry(i) || isOwnEntry(j) ? 'own' : null },
             h('th', { scope: 'row', class: 'pair', 'data-pair': `${i}-${j}` },
               h('span', { class: 'side side-a' }, players[i].name), ' – ', h('span', { class: 'side side-b' }, players[j].name)),
             Array.from({ length: gameCount }, (_, g) => h('td', { class: 'game-cell', 'data-label': gameCount > 1 ? t('groups.game', { n: g + 1 }) : null },
-              scoreInput(i, j, g, 0), h('span', { class: 'dash', 'aria-hidden': 'true' }, '–'), scoreInput(i, j, g, 1)))))))))));
+              scoreInput(i, j, g, 0), h('span', { class: 'dash', 'aria-hidden': 'true' }, '–'), scoreInput(i, j, g, 1))),
+            h('td', { class: 'row-clear-cell' }, clearRowButton(i, j))))))))));
   markWinners();
 }
 

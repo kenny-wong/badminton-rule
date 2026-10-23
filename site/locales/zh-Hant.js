@@ -198,6 +198,8 @@ export default {
   'groups.exPoints': '須比較分數差',
   'groups.clear': '清除比分',
   'groups.clearNames': '清除人名',
+  'groups.clearRow': '清除',
+  'groups.clearRowLabel': '清除 {a} 對 {b} 的比分',
   'groups.ownHint': '有你已儲存選手的組合會以顏色標示。',
   'groups.outlookTitle': '出線分析',
   'groups.outlookFor': '分析對象',

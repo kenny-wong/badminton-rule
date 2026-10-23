@@ -165,6 +165,7 @@ export default {
   'groups.docTitle': '由小組賽到淘汰賽',
   'groups.title': '由小組賽到淘汰賽',
   'groups.lede': '小組（循環賽）中選手如何排名，以及兩名或以上選手成績相同時的處理方法。',
+  'groups.rulesTitle': '規則',
   'groups.basicsTitle': '基本規則',
   'groups.basics1': '小組內每名選手都要與其他所有選手比賽，而小組內每場比賽均採用相同的計分制。',
   'groups.basics2': '各小組的最終名次決定誰可晉級。每組有多少人晉級，以及晉級者在淘汰賽籤表中的位置，由各賽事的抽籤安排訂定。在 Badminton England 的範例中，各小組首名晉級淘汰賽。',

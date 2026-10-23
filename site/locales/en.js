@@ -165,6 +165,7 @@ export default {
   'groups.docTitle': 'Groups to knockout',
   'groups.title': 'From groups to the knockout',
   'groups.lede': 'How players are ranked in a group (round robin), and what happens when two or more finish level.',
+  'groups.rulesTitle': 'The rules',
   'groups.basicsTitle': 'The basics',
   'groups.basics1': 'Everyone in a group plays everyone else, and every match in the group uses the same scoring.',
   'groups.basics2': 'The finishing order in each group decides who goes through. How many go through from each group, and where they go in the knockout draw, is set by each tournament’s draw. In Badminton England’s example, the group winners go into the knockout.',

@@ -539,6 +539,7 @@ const calc = {
   gamePoints: 21, // points per game: decides when a game is finished, and projects unplayed matches
   noSetting: false, // true: first to the target wins the game, even from 20 all
   preset: 'bwf', // which tournament's scoring is applied; 'custom' once changed by hand
+  rulesOpen: false, // the rules part of the page starts folded
 };
 
 /** Saved players' names: entries holding any of them count as the reader's own. */
@@ -1149,27 +1150,34 @@ function renderGroups() {
   const example = (id, key) => h('button', { type: 'button', class: 'chip-button', 'data-example': id, 'aria-pressed': String(calc.example === id),
     onclick: () => { loadExample(id); renderGroups(); document.getElementById('calc')?.scrollIntoView({ block: 'start' }); } }, t(key));
 
+  // Two parts: 1. the rules, folded away by default (and kept as the reader left
+  // them when the page redraws), and 2. the calculator, always open. The toggle
+  // event arrives a moment late, so read the fold straight off the page too.
+  const rulesPart = view.querySelector('details.groups-part');
+  if (rulesPart) calc.rulesOpen = rulesPart.open;
   fill(view,
     h('h2', { class: 'section-title' }, t('groups.title')),
     h('p', { class: 'lede-small' }, t('groups.lede')),
-    h('section', { class: 'prose groups-section' },
-      h('h3', {}, t('groups.basicsTitle')),
-      h('ul', {}, ['groups.basics1', 'groups.basics2', 'groups.basics3'].map((k) => h('li', {}, t(k))))),
-    h('section', { class: 'groups-section' },
-      h('h3', {}, t('groups.laddersTitle')),
-      h('p', { class: 'callout' }, t('groups.keyIdea')),
-      h('div', { class: 'ladders' },
-        h('article', { class: 'ladder-card' },
-          h('h4', {}, t('groups.bestOf3Title')), h('p', { class: 'muted' }, t('groups.bestOf3Note')),
-          ladder(['ladder.b1', 'ladder.b2', 'ladder.b3', 'ladder.b4', 'ladder.b5', 'ladder.b6', 'ladder.b7'])),
-        h('article', { class: 'ladder-card' },
-          h('h4', {}, t('groups.oneGameTitle')), h('p', { class: 'muted' }, t('groups.oneGameNote')),
-          ladder(['ladder.o1', 'ladder.o2', 'ladder.o3', 'ladder.o4', 'ladder.o5'])))),
-    h('section', { class: 'prose groups-section' },
-      h('h3', {}, t('groups.withdrawTitle')),
-      h('ul', {}, h('li', {}, t('groups.withdraw1')), h('li', {}, t('groups.withdraw2')))),
-    h('section', { class: 'groups-section calc', id: 'calc' },
-      h('h3', {}, t('groups.calcTitle')),
+    h('details', { class: 'groups-part', open: calc.rulesOpen, ontoggle: (e) => { calc.rulesOpen = e.target.open; } },
+      h('summary', {}, h('h3', { class: 'part-title' }, `1. ${t('groups.rulesTitle')}`)),
+      h('section', { class: 'prose groups-section' },
+        h('h4', { class: 'sub-title' }, t('groups.basicsTitle')),
+        h('ul', {}, ['groups.basics1', 'groups.basics2', 'groups.basics3'].map((k) => h('li', {}, t(k))))),
+      h('section', { class: 'groups-section' },
+        h('h4', { class: 'sub-title' }, t('groups.laddersTitle')),
+        h('p', { class: 'callout' }, t('groups.keyIdea')),
+        h('div', { class: 'ladders' },
+          h('article', { class: 'ladder-card' },
+            h('h5', {}, t('groups.bestOf3Title')), h('p', { class: 'muted' }, t('groups.bestOf3Note')),
+            ladder(['ladder.b1', 'ladder.b2', 'ladder.b3', 'ladder.b4', 'ladder.b5', 'ladder.b6', 'ladder.b7'])),
+          h('article', { class: 'ladder-card' },
+            h('h5', {}, t('groups.oneGameTitle')), h('p', { class: 'muted' }, t('groups.oneGameNote')),
+            ladder(['ladder.o1', 'ladder.o2', 'ladder.o3', 'ladder.o4', 'ladder.o5'])))),
+      h('section', { class: 'prose groups-section' },
+        h('h4', { class: 'sub-title' }, t('groups.withdrawTitle')),
+        h('ul', {}, h('li', {}, t('groups.withdraw1')), h('li', {}, t('groups.withdraw2'))))),
+    h('section', { class: 'groups-part groups-section calc', id: 'calc' },
+      h('h3', { class: 'part-title' }, `2. ${t('groups.calcTitle')}`),
       h('p', { class: 'lede-small' }, t('groups.calcLede')),
       h('div', { class: 'calc-controls' },
         h('span', { class: 'muted' }, t('groups.examples')),

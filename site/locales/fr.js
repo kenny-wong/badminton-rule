@@ -164,6 +164,7 @@ export default {
   'groups.docTitle': 'Des poules au tableau final',
   'groups.title': 'Des poules au tableau à élimination directe',
   'groups.lede': 'Comment les joueurs sont classés dans une poule (toutes rencontres), et ce qui se passe lorsque deux joueurs ou plus terminent à égalité.',
+  'groups.rulesTitle': 'Le règlement',
   'groups.basicsTitle': 'L’essentiel',
   'groups.basics1': 'Dans une poule, chaque joueur rencontre tous les autres, et tous les matchs de la poule se jouent avec le même système de score.',
   'groups.basics2': 'Le classement final de chaque poule détermine qui se qualifie. Le nombre de qualifiés par poule et leur place dans le tableau à élimination directe sont fixés par le tableau de chaque tournoi. Dans l’exemple de Badminton England, les vainqueurs de poule accèdent au tableau à élimination directe.',

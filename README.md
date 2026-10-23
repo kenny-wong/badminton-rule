@@ -78,6 +78,6 @@ tests/                node:test suites for all of the above
 - **If you change any English rule text, update all three translation files.** The tests fail if a translation is missing or left over. They also fail if a UI string or `{placeholder}` doesn't match `locales/en.js`.
 - **Entry rules** (grade bars, minimum grades, birth years) are tables in `site/eligibility.js`. The Grades chart and the Can I enter? checker both read them, so the two can't disagree.
 - **Scoring per tier** (best of three or one game; 21, 15 or 11 points; setting) is `SCORING_PRESETS` in `site/groups.js`, taken from the matrix's Matches column.
-- `app.js` has no unit tests, so after changing it, load every page and check that none is stuck on "Loading the rules…".
+- `app.js` has no unit tests, so after changing it, load every page and check that none is stuck on "Loading the rules…" or shows "Couldn’t load the rules".
 
 For a new season, update the data file and its translations, the season year and birth-year limits in `eligibility.js`, the scoring presets if the Matches column changes, and the source links.

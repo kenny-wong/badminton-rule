@@ -8,6 +8,7 @@ export default {
   'site.lede': 'Badminton England の大会規約（Terms & Conditions）の規定一覧表を、大会区分ごと・ルールごとにまとめました。',
   'site.searchLabel': 'ルールを検索',
   'site.searchPlaceholder': 'ルールを検索（例：「休憩時間」「グレードE」）',
+  'site.searchShort': 'ルールを検索…',
   'site.language': '言語',
   'site.loading': 'ルールを読み込んでいます…',
   'site.loadError': 'ルールを読み込めませんでした（{error}）。ページを再読み込みしてください。',
@@ -43,6 +44,7 @@ export default {
   'status.partial': '一部の種目のみ',
   'status.no': '出場不可',
   'status.info': '注記を参照',
+  'status.noLimits': 'グレード制限なし',
   'verdict.allowed': '出場可',
   'verdict.barred': '出場不可',
 
@@ -56,7 +58,8 @@ export default {
 
   'grades.docTitle': '出場できる人',
   'grades.title': '各大会区分に出場できるグレード',
-  'grades.lede': 'グレードは A（最上位）から K まであり、種目ごとに適用されます。グレードを選ぶと、そのグレードで出場できる大会区分がすべて表示されます。マスにカーソルを合わせると、その根拠となるルールが表示されます。',
+  'grades.lede': 'グレードは A（最上位）から K まであり、種目ごとに適用されます。グレードを選ぶと、そのグレードで出場できる大会区分がすべて表示されます。マスをタップするかカーソルを合わせると、その根拠となるルールが表示されます。',
+  'grades.sideHint': '上でグレードを選ぶか、表の上端の文字を選ぶと、そのグレードで出場できる大会区分が一覧表示されます。',
   'grades.all': 'すべてのグレード',
   'grades.pickerLabel': 'グレードを強調表示',
   'grades.legendLabel': '凡例',
@@ -84,6 +87,8 @@ export default {
   'shared.same': '{tiers}で共通',
   'shared.combined': '{areas}は1つのルールにまとめられています。',
 
+  'compare.title': 'ルールを大会区分ごとに比較',
+  'compare.lede': 'ルール項目を選ぶと、大会区分ごとの違いが表示されます。',
   'compare.navLabel': 'ルール項目',
   'compare.one': 'すべての大会区分に1つのルールが適用されます。',
   'compare.many': '{total}の大会区分に{n}通りのルールがあります。同じルールの大会区分はまとめて表示しています。',
@@ -95,6 +100,7 @@ export default {
   'search.countMany': '「{q}」に一致するルール：{n}件',
   'search.none': '「{q}」に一致するものはありません',
   'search.tip': '短い語句や、「Junior Bronze」などの大会区分名、「グレードE」などのグレードで検索してみてください。',
+  'search.matchedEnglish': '英語の原文に「{words}」が含まれるため表示しています。',
 
   'check.title': '出場できますか？',
   'check.dob': '生年月日',

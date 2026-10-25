@@ -35,6 +35,16 @@
 
   --radius: 10px;
   --shadow: 0 1px 2px rgb(16 24 20 / 6%), 0 1px 1px rgb(16 24 20 / 4%);
+
+  /* Type scale: every font size on the site comes from this list. */
+  --fs-2xs: 0.75rem;    /* 12px: table headings, small labels */
+  --fs-xs: 0.8125rem;   /* 13px: notes, pills */
+  --fs-sm: 0.875rem;    /* 14px: hints, secondary text */
+  --fs-md: 0.9375rem;   /* 15px: tables, controls */
+  --fs-lg: 1.0625rem;   /* 17px: subheadings */
+  --fs-xl: 1.15rem;     /* section subheadings */
+  --fs-2xl: 1.3rem;     /* part titles */
+  --fs-3xl: 1.45rem;    /* page titles */
   color-scheme: light;
 }
 
@@ -160,27 +170,29 @@ main:focus { outline: none; }
 .logo-cork { fill: var(--shuttle-cork); stroke: var(--shuttle-cork); }
 .brand:hover .logo { transform: rotate(-12deg) translateY(-3px); }
 .brand h1 { margin: 2px 0 6px; font-size: clamp(1.7rem, 4vw, 2.4rem); line-height: 1.1; letter-spacing: -0.02em; }
-.eyebrow { margin: 0; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.eyebrow { margin: 0; font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
 .masthead .eyebrow { color: var(--head-muted); }
 .lede { margin: 0; color: var(--head-muted); max-width: 56ch; }
 .site-search { grid-area: search; width: 100%; }
+/* Opaque fields, so the court lines behind them don't cross the text. */
 .site-search input {
   width: 100%; padding: 11px 14px; border-radius: 999px; font: inherit;
-  border: 1px solid rgb(255 255 255 / 25%); background: rgb(255 255 255 / 10%); color: var(--head-text);
+  border: 1px solid rgb(255 255 255 / 25%); color: var(--head-text);
+  background: color-mix(in srgb, var(--head-bg) 90%, #fff);
 }
 .site-search input::placeholder { color: var(--head-muted); }
-.site-search input:focus { background: rgb(255 255 255 / 16%); }
+.site-search input:focus { background: color-mix(in srgb, var(--head-bg) 82%, #fff); }
 
-.lang { grid-area: lang; justify-self: end; display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--head-muted); }
+.lang { grid-area: lang; justify-self: end; display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-sm); color: var(--head-muted); }
 .lang select {
-  min-height: 34px; padding: 4px 8px; border-radius: 8px; font-size: 0.9rem;
-  color: var(--head-text); background: rgb(255 255 255 / 10%); border: 1px solid rgb(255 255 255 / 25%);
+  min-height: 34px; padding: 4px 8px; border-radius: 8px; font-size: var(--fs-md);
+  color: var(--head-text); background: color-mix(in srgb, var(--head-bg) 90%, #fff); border: 1px solid rgb(255 255 255 / 25%);
 }
 /* The open list is drawn by the browser on its own (often white) surface, so the
    options can't inherit the header's white text. */
 .lang select option { color: var(--text); background: var(--surface); }
 .translated-note {
-  font-size: 0.85rem; color: var(--info); background: var(--info-bg);
+  font-size: var(--fs-sm); color: var(--info); background: var(--info-bg);
   padding: 6px 12px; border-radius: 8px; margin: 0 0 12px;
 }
 
@@ -224,13 +236,13 @@ main { padding-top: 28px; padding-bottom: 40px; min-height: 60vh; }
 }
 .muted { color: var(--muted); }
 
-.section-title { font-size: 1.45rem; margin: 0 0 8px; letter-spacing: -0.01em; }
+.section-title { font-size: var(--fs-3xl); margin: 0 0 8px; letter-spacing: -0.01em; }
 .lede-small { color: var(--muted); margin: 0 0 20px; max-width: 65ch; }
 
 /* Tier view */
 .split { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 32px; align-items: start; }
 .tier-nav { position: sticky; top: 16px; }
-.tier-group h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 16px 0 6px; }
+.tier-group h2 { font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 16px 0 6px; }
 .tier-group:first-child h2 { margin-top: 0; }
 .tier-group ul { list-style: none; margin: 0; padding: 0; }
 .tier-group a {
@@ -246,14 +258,15 @@ main { padding-top: 28px; padding-bottom: 40px; min-height: 60vh; }
   padding: 16px 20px; margin-bottom: 20px;
 }
 .tier-head h2 { margin: 2px 0 0; font-size: 1.75rem; letter-spacing: -0.01em; }
-.tier-head .eyebrow { color: var(--strong); }
+/* Darkened toward the text colour so the small caps reach 4.5:1 on the tint. */
+.tier-head .eyebrow { color: color-mix(in srgb, var(--strong) 70%, var(--text)); }
 
 /* Tables */
 .table-scroll {
   overflow: auto; background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); box-shadow: var(--shadow);
 }
-.data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.93rem; }
+.data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--fs-md); }
 .data-table th, .data-table td {
   padding: 10px 14px; text-align: left; vertical-align: top;
   border-bottom: 1px solid var(--border); border-right: 1px solid var(--border);
@@ -261,7 +274,7 @@ main { padding-top: 28px; padding-bottom: 40px; min-height: 60vh; }
 .data-table tr > :last-child { border-right: 0; }
 .data-table tbody tr:last-child > * { border-bottom: 0; }
 .data-table thead th {
-  background: var(--table-head); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;
+  background: var(--table-head); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.05em;
   color: var(--muted); font-weight: 650; position: sticky; top: 0; z-index: 2;
 }
 .data-table tbody th { font-weight: 650; }
@@ -278,11 +291,11 @@ main { padding-top: 28px; padding-bottom: 40px; min-height: 60vh; }
 
 /* Grade chart */
 .grade-picker a { min-width: 2.4em; text-align: center; }
-.legend { list-style: none; display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 4px 0 12px; padding: 0; font-size: 0.9rem; }
+.legend { list-style: none; display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 4px 0 12px; padding: 0; font-size: var(--fs-md); }
 .legend li { display: inline-flex; align-items: center; gap: 8px; }
 .swatch {
   display: inline-flex; align-items: center; justify-content: center; flex: none;
-  width: 22px; height: 22px; border-radius: 4px; font-size: 0.78rem; font-weight: 700;
+  width: 22px; height: 22px; border-radius: 4px; font-size: var(--fs-xs); font-weight: 700;
 }
 .cell-allowed { background: var(--status-good); color: #fff; }
 .cell-conditional { background: var(--status-warning); color: #0b0b0b; }
@@ -296,7 +309,7 @@ main { padding-top: 28px; padding-bottom: 40px; min-height: 60vh; }
 }
 .grade-chart { border-collapse: separate; border-spacing: 3px; }
 .grade-chart thead th {
-  font-size: 0.85rem; font-weight: 700; color: var(--muted); text-align: center; padding: 8px 0 6px;
+  font-size: var(--fs-sm); font-weight: 700; color: var(--muted); text-align: center; padding: 8px 0 6px;
   position: sticky; top: 0; z-index: 2; background: var(--surface); box-shadow: 0 1px 0 var(--border);
 }
 .grade-chart thead th.label-col { text-align: left; padding-left: 8px; }
@@ -304,41 +317,77 @@ main { padding-top: 28px; padding-bottom: 40px; min-height: 60vh; }
 .grade-chart thead th a:hover { color: var(--accent); }
 .grade-chart thead th.selected a { background: var(--accent); color: var(--surface); }
 .grade-chart tbody th[scope="row"] {
-  text-align: left; font-weight: 600; font-size: 0.92rem; line-height: 1.3;
+  text-align: left; font-weight: 600; font-size: var(--fs-md); line-height: 1.3;
   padding: 5px 18px 5px 10px; border-left: 4px solid var(--strong); min-width: 230px; max-width: 300px;
 }
 .grade-chart tbody th[scope="row"] a { color: var(--text); text-decoration: none; }
 .grade-chart tbody th[scope="row"] a:hover { color: var(--accent); text-decoration: underline; }
-.row-note { display: block; font-weight: 400; font-size: 0.78rem; color: var(--muted); }
+.row-note { display: block; font-weight: 400; font-size: var(--fs-xs); color: var(--muted); }
+.data-table td p.search-note { margin-top: 8px; }
+.search tbody th mark { color: var(--text); } /* full contrast on the highlight, also in the muted phone label */
 .grade-chart .group-row th {
-  text-align: left; padding: 14px 6px 2px; font-size: 0.72rem; font-weight: 700;
+  text-align: left; padding: 14px 6px 2px; font-size: var(--fs-2xs); font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
 }
 .grade-chart .cell {
   width: 36px; min-width: 26px; height: 34px; padding: 0; text-align: center; vertical-align: middle;
-  border-radius: 4px; font-weight: 700; font-size: 0.85rem; cursor: default;
+  border-radius: 4px; font-weight: 700; font-size: var(--fs-sm); cursor: default;
 }
 .grade-chart .cell.dim { opacity: 0.22; }
-.chart-foot { font-size: 0.88rem; margin-top: 12px; }
+.chart-foot { font-size: var(--fs-sm); margin-top: 12px; }
 
 .chart-tip {
   position: fixed; z-index: 20; max-width: 300px; padding: 7px 10px; border-radius: 6px;
-  background: var(--text); color: var(--bg); font-size: 0.82rem; line-height: 1.4;
+  background: var(--text); color: var(--bg); font-size: var(--fs-xs); line-height: 1.4;
   pointer-events: none; box-shadow: 0 4px 14px rgb(0 0 0 / 18%);
 }
 .chart-tip[hidden] { display: none; }
 
+/* Grades page layout. The block is as wide as the chart box: the summary's own
+   width is contained, so it fills the chart's width without stretching past it. */
+.grades-layout { width: fit-content; max-width: 100%; }
+.grade-side { display: flex; flex-direction: column; }
+.grade-side .legend { order: 1; }
+.side-hint { display: none; }
 .grade-summary {
+  contain: inline-size;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   box-shadow: var(--shadow); padding: 14px 18px; margin-bottom: 18px;
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px 28px;
 }
-.grade-summary h3 { grid-column: 1 / -1; margin: 0; font-size: 1.15rem; }
+.grade-summary h3 { margin: 0 0 4px; font-size: var(--fs-xl); }
+.summary-groups { columns: 3 220px; column-gap: 28px; }
+.summary-group { break-inside: avoid; }
 .summary-head { display: flex; align-items: flex-start; gap: 8px; margin: 6px 0 4px; font-weight: 650; }
 .summary-head .count { color: var(--muted); font-weight: 500; }
-.grade-summary ul { margin: 0; padding-left: 30px; font-size: 0.92rem; }
+.grade-summary ul { margin: 0; padding-left: 30px; font-size: var(--fs-md); }
 .grade-summary li { margin-bottom: 2px; }
 .grade-summary li a { color: var(--text); }
+
+@media (min-width: 1100px) {
+  /* Chart on the left; key and summary in a sticky column filling the right. */
+  .grades-layout {
+    width: auto; display: grid; grid-template-columns: auto minmax(280px, 1fr);
+    grid-template-areas: "main side"; gap: 0 28px; align-items: start;
+  }
+  .grades-main { grid-area: main; }
+  .grade-side { grid-area: side; position: sticky; top: 16px; }
+  .grade-side .legend { order: 0; flex-direction: column; gap: 8px; margin: 0 0 14px; }
+  /* The key stays put; a long summary scrolls its lists inside the card, which
+     fits the window below the key. The bottom fades while more is hidden. */
+  .grade-summary {
+    contain: none; margin-bottom: 0; display: flex; flex-direction: column;
+    max-height: calc(100vh - 150px);
+  }
+  .grade-summary .summary-groups { columns: auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .summary-groups.more-below {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent);
+  }
+  .side-hint {
+    display: block; margin: 0; padding: 14px 18px; font-size: var(--fs-sm);
+    border: 1px dashed var(--border); border-radius: var(--radius);
+  }
+}
 
 /* Players */
 .button {
@@ -364,50 +413,76 @@ input[type="text"]:focus-visible { outline: 3px solid var(--focus); outline-offs
 .compare-title { margin-top: 32px; }
 /* Its own scroll box (both axes) so the header row and tier column stay pinned. */
 .compare-scroll { max-height: 80vh; }
-.player-compare thead th { text-transform: none; letter-spacing: 0; color: var(--text); font-size: 0.95rem; min-width: 190px; }
-.player-compare thead th.corner { position: sticky; left: 0; z-index: 3; min-width: 140px; color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.player-compare thead th { text-transform: none; letter-spacing: 0; color: var(--text); font-size: var(--fs-md); min-width: 190px; }
+.player-compare thead th.corner { position: sticky; left: 0; z-index: 3; min-width: 140px; color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.05em; }
 .player-name { font-weight: 700; color: var(--text); }
-.player-line { display: block; font-weight: 500; font-size: 0.78rem; color: var(--muted); }
+.player-line { display: block; font-weight: 500; font-size: var(--fs-xs); color: var(--muted); }
 .player-compare .tier-cell {
   position: sticky; left: 0; z-index: 1; background: var(--surface);
   border-left: 5px solid var(--strong); white-space: nowrap;
 }
 .player-compare .group-row th {
-  background: var(--tint); color: var(--text); font-size: 0.78rem; text-transform: uppercase;
+  background: var(--tint); color: var(--text); font-size: var(--fs-xs); text-transform: uppercase;
   letter-spacing: 0.08em; border-left: 5px solid var(--strong); padding-block: 6px;
 }
+/* The note shared by every cell in the group, printed once beside its name. */
+.group-note {
+  display: block; margin-top: 2px; max-width: min(70ch, calc(100vw - 72px)); /* stays in view on phones */
+  font-size: var(--fs-xs); font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--muted);
+}
 .verdict-cell .status { margin-bottom: 4px; }
-.mini-events { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: 0.84rem; margin-top: 2px; }
+.mini-events { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: var(--fs-sm); margin-top: 2px; }
 .mini { font-weight: 650; white-space: nowrap; }
 .mini-events .age { font-weight: 650; color: var(--muted); min-width: 2.6em; }
-.cell-note { margin: 4px 0 0; font-size: 0.8rem; color: var(--muted); line-height: 1.4; }
+.cell-note { margin: 4px 0 0; font-size: var(--fs-xs); color: var(--muted); line-height: 1.4; }
 
 /* Groups page */
 .groups-section { margin-top: 28px; }
-.groups-section h3 { font-size: 1.15rem; margin: 0 0 10px; }
-.groups-section h4 { font-size: 0.95rem; margin: 16px 0 8px; }
-.groups-section h4.sub-title { font-size: 1.15rem; margin: 0 0 10px; }
-/* The page's two parts: 1. the rules (folded by default) and 2. the calculator. */
-.groups-part { margin-top: 24px; }
-h3.part-title { font-size: 1.3rem; margin: 0 0 10px; }
-details.groups-part {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 4px 16px;
+.groups-section h3 { font-size: var(--fs-xl); margin: 0 0 10px; }
+.groups-section h4 { font-size: var(--fs-lg); margin: 16px 0 8px; }
+.groups-section h4.sub-title { font-size: var(--fs-xl); margin: 0 0 10px; }
+/* The page's two parts, as matching cards: 1. the rules (folded by default)
+   and 2. the calculator (always open). */
+.groups-part {
+  margin-top: 24px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 4px 16px;
 }
-details.groups-part[open] { padding-bottom: 16px; }
-details.groups-part > summary {
-  display: flex; align-items: center; gap: 10px; cursor: pointer; list-style: none; padding: 10px 0;
+.groups-part[open], section.groups-part { padding-bottom: 16px; }
+h3.part-title { font-size: var(--fs-2xl); margin: 0; }
+/* Title rows: the rules' fold chevron, and in the same slot the calculator's shuttle. */
+details.groups-part > summary, .part-head {
+  display: flex; align-items: center; gap: 10px; padding: 10px 0;
 }
-details.groups-part > summary::-webkit-details-marker { display: none; }
-details.groups-part > summary::before {
+.part-head { margin-bottom: 4px; }
+.part-head::before {
+  content: ""; flex: none; width: 17px; height: 17px;
+  background-color: var(--accent);
+  -webkit-mask: url("img/shuttle.svg") center / contain no-repeat;
+  mask: url("img/shuttle.svg") center / contain no-repeat;
+  transform: rotate(-30deg);
+}
+.calc h4 { font-size: var(--fs-lg); margin: 18px 0 8px; }
+details.groups-part > .groups-section:first-of-type { margin-top: 8px; }
+/* Folding panels share one look: no browser triangle, an accent chevron that turns. */
+details.groups-part > summary, .assumptions > summary { cursor: pointer; list-style: none; }
+details.groups-part > summary::-webkit-details-marker, .assumptions > summary::-webkit-details-marker { display: none; }
+details.groups-part > summary::before, .assumptions > summary::before {
   content: ""; flex: none; width: 9px; height: 9px; margin: 0 4px;
   border-right: 2.5px solid var(--accent); border-bottom: 2.5px solid var(--accent);
   transform: rotate(-45deg); transition: transform 0.15s;
 }
-details.groups-part[open] > summary::before { transform: rotate(45deg); }
-details.groups-part > summary .part-title { margin: 0; }
-details.groups-part > .groups-section:first-of-type { margin-top: 8px; }
-@media (prefers-reduced-motion: reduce) { details.groups-part > summary::before { transition: none; } }
+details.groups-part[open] > summary::before, .assumptions[open] > summary::before { transform: rotate(45deg); }
+@media (prefers-reduced-motion: reduce) {
+  details.groups-part > summary::before, .assumptions > summary::before { transition: none; }
+}
+/* Sources sit quietly under both parts. */
+.sources { margin-top: 28px; font-size: var(--fs-sm); color: var(--muted); max-width: 75ch; }
+.sources h4 {
+  margin: 0 0 6px; font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+}
+.sources ul { margin: 0 0 6px; padding-left: 20px; }
+.sources li { margin-bottom: 4px; }
+.sources p { margin: 0; }
 .callout {
   margin: 0 0 16px; padding: 12px 16px; border-radius: var(--radius); max-width: 75ch;
   background: var(--partial-bg); color: var(--text); border-left: 5px solid var(--status-warning); font-weight: 500;
@@ -417,8 +492,8 @@ details.groups-part > .groups-section:first-of-type { margin-top: 8px; }
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   box-shadow: var(--shadow); padding: 14px 18px;
 }
-.ladder-card h5 { margin: 0; font-size: 1.05rem; }
-.ladder-card > p { margin: 2px 0 12px; font-size: 0.88rem; }
+.ladder-card h5 { margin: 0; font-size: var(--fs-lg); }
+.ladder-card > p { margin: 2px 0 12px; font-size: var(--fs-sm); }
 /* Numbered steps joined by a line, like rungs of a ladder. */
 .ladder { list-style: none; margin: 0; padding: 0; counter-reset: step; }
 .ladder li {
@@ -426,7 +501,7 @@ details.groups-part > .groups-section:first-of-type { margin-top: 8px; }
 }
 .ladder li::before {
   content: counter(step); position: absolute; left: 0; top: 2px; width: 32px; height: 32px; border-radius: 50%;
-  display: grid; place-items: center; font-weight: 700; font-size: 0.9rem; color: #fff; background: var(--accent);
+  display: grid; place-items: center; font-weight: 700; font-size: var(--fs-md); color: var(--surface); background: var(--accent);
 }
 .ladder li:not(:last-child)::after {
   content: ""; position: absolute; left: 15px; top: 36px; bottom: 0; width: 2px; background: var(--border);
@@ -436,11 +511,13 @@ details.groups-part > .groups-section:first-of-type { margin-top: 8px; }
 .ladder .step-last::before { background: var(--muted); }
 
 .calc-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0 0 12px; }
-.calc-controls label { font-size: 0.9rem; color: var(--muted); }
-.preset-summary { font-size: 0.85rem; }
+.calc-controls label { font-size: var(--fs-md); color: var(--muted); }
+/* A label and its control never part across a line break. */
+.field { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.preset-summary { font-size: var(--fs-sm); }
 #calc-preset { max-width: 100%; }
 .chip-button {
-  font: inherit; font-size: 0.9rem; padding: 5px 12px; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: var(--fs-md); padding: 5px 12px; border-radius: 999px; cursor: pointer;
   border: 1px solid var(--border); background: var(--surface); color: var(--text);
 }
 .chip-button:hover { border-color: var(--accent); }
@@ -458,7 +535,7 @@ details.groups-part > .groups-section:first-of-type { margin-top: 8px; }
 .calc-matches .side.loss::after { content: " ✕"; color: var(--no); }
 .game-cell { white-space: nowrap; }
 .calc-matches .row-clear-cell { width: 1%; white-space: nowrap; }
-.calc-matches .row-clear { font-size: 0.85rem; padding: 2px 4px; }
+.calc-matches .row-clear { font-size: var(--fs-sm); padding: 2px 4px; }
 .score-input {
   width: 3.4em; min-height: 36px; padding: 4px 6px; text-align: center; font: inherit;
   color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
@@ -468,14 +545,17 @@ details.groups-part > .groups-section:first-of-type { margin-top: 8px; }
 .score-input.loss { background: var(--no-bg); border-color: color-mix(in srgb, var(--no) 40%, transparent); }
 .score-input:disabled { opacity: 0.4; cursor: not-allowed; background: var(--table-head); }
 .dash { margin: 0 3px; color: var(--muted); }
-label.check { display: inline-flex; align-items: center; gap: 4px; font-size: 0.88rem; white-space: nowrap; }
+label.check { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-sm); white-space: nowrap; }
 #calc-result { margin-top: 8px; }
 /* Results grid: row player's scores against each column; green won, red lost. */
-.cross-hint { margin: -4px 0 8px; font-size: 0.85rem; }
+.cross-hint { margin: -4px 0 8px; font-size: var(--fs-sm); }
 .cross th, .cross td { text-align: center; vertical-align: middle; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.cross thead th { text-transform: none; letter-spacing: 0; font-size: 0.85rem; color: var(--text); }
+.cross thead th { text-transform: none; letter-spacing: 0; font-size: var(--fs-sm); color: var(--text); }
 .cross tbody th.player { text-align: left; }
-.cross td { font-size: 0.85rem; line-height: 1.35; min-width: 76px; }
+.cross td { font-size: var(--fs-sm); line-height: 1.35; min-width: 76px; }
+/* The grid is only as wide as its columns; its box shrinks to match. */
+.data-table.cross { width: auto; }
+.cross-scroll { width: fit-content; max-width: 100%; }
 .cross td.win { background: var(--yes-bg); }
 .cross td.loss { background: var(--no-bg); }
 .cross td.self { background: repeating-linear-gradient(135deg, var(--table-head) 0 6px, var(--surface) 6px 12px); }
@@ -487,7 +567,7 @@ label.check { display: inline-flex; align-items: center; gap: 4px; font-size: 0.
 /* The reader's own entries (holding a saved player), in every calculator table. */
 .calc-players tr.own > *, .calc-matches tr.own > *, .calc-standings tr.own > * { background: var(--own); }
 .calc-players tr.own th, .calc-standings tr.own .player { box-shadow: inset 4px 0 0 var(--shuttle-cork); font-weight: 700; }
-.own-hint { display: flex; align-items: center; gap: 8px; margin: -2px 0 8px; font-size: 0.85rem; }
+.own-hint { display: flex; align-items: center; gap: 8px; margin: -2px 0 8px; font-size: var(--fs-sm); }
 .own-swatch { width: 16px; height: 16px; border-radius: 4px; background: var(--own); box-shadow: inset 3px 0 0 var(--shuttle-cork); border: 1px solid var(--border); }
 .outlook {
   margin-top: 20px; padding: 14px 16px; border-radius: var(--radius);
@@ -499,20 +579,22 @@ label.check { display: inline-flex; align-items: center; gap: 4px; font-size: 0.
 .outlook-table .outcomes li.won::marker { content: "✓ "; color: var(--yes); }
 .outlook-table .outcomes li.lost::marker { content: "✕ "; color: var(--no); }
 .outlook-table .outcomes li.other::marker { content: "• "; color: var(--muted); }
-.outlook-table .status { white-space: normal; }
-.plain-margin { margin: 6px 0 0; font-size: 0.86rem; }
-.outlook-note { font-size: 0.82rem; margin: 10px 0 0; }
+.outlook-table .status { white-space: nowrap; }
+/* A points condition is a sentence: it wraps, as a rounded box rather than a pill. */
+.outlook-table .status.v-margin { white-space: normal; border-radius: 8px; align-items: flex-start; padding-block: 4px; }
+.plain-margin { margin: 6px 0 0; font-size: var(--fs-sm); }
+.outlook-note { font-size: var(--fs-xs); margin: 10px 0 0; }
 
 /* Section heading with its clear button on the right. */
 .calc-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 16px 0 8px; }
 .calc-heading h4 { margin: 0; }
-.calc-heading .link-button { font-size: 0.88rem; padding: 2px 0; }
+.calc-heading .link-button { font-size: var(--fs-sm); padding: 2px 0; }
 .palette { margin: 4px 0 6px; }
-.palette-title { margin: 0 0 6px; font-weight: 600; font-size: 0.92rem; }
+.palette-title { margin: 0 0 6px; font-weight: 600; font-size: var(--fs-md); }
 .palette-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 /* touch-action: none lets a finger drag the chip instead of scrolling the page. */
 .player-chip {
-  font: inherit; font-size: 0.9rem; font-weight: 600; padding: 6px 14px; border-radius: 999px; cursor: grab;
+  font: inherit; font-size: var(--fs-md); font-weight: 600; padding: 6px 14px; border-radius: 999px; cursor: grab;
   touch-action: none; user-select: none; -webkit-user-select: none;
   color: var(--text); background: var(--tint-junior); border: 1px solid color-mix(in srgb, var(--strong-junior) 45%, transparent);
 }
@@ -520,10 +602,10 @@ label.check { display: inline-flex; align-items: center; gap: 4px; font-size: 0.
 .player-chip.placed { opacity: 0.5; }
 .player-chip[aria-pressed="true"] { outline: 3px solid var(--focus); outline-offset: 1px; opacity: 1; }
 .player-chip:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
-.palette-hint { margin: 6px 0 0; font-size: 0.85rem; }
+.palette-hint { margin: 6px 0 0; font-size: var(--fs-sm); }
 .drag-ghost {
   position: fixed; z-index: 30; pointer-events: none; transform: translate(-50%, -130%);
-  padding: 6px 14px; border-radius: 999px; font-weight: 600; font-size: 0.9rem;
+  padding: 6px 14px; border-radius: 999px; font-weight: 600; font-size: var(--fs-md);
   color: var(--surface); background: var(--accent); box-shadow: 0 6px 16px rgb(0 0 0 / 25%);
 }
 .calc-players .slots { display: flex; gap: 6px; }
@@ -541,7 +623,7 @@ label.check { display: inline-flex; align-items: center; gap: 4px; font-size: 0.
 .calc-standings .player { position: sticky; left: 0; z-index: 1; background: var(--surface); }
 .calc-standings thead th.player { z-index: 3; background: var(--table-head); }
 .calc-standings tr.withdrawn { color: var(--muted); }
-.by { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 0.82rem; font-weight: 600; background: var(--table-head); }
+.by { display: inline-block; white-space: nowrap; padding: 1px 9px; border-radius: 999px; font-size: var(--fs-xs); font-weight: 600; background: var(--table-head); }
 .by-headToHead { background: var(--info-bg); color: var(--info); }
 .by-gamesDiff, .by-pointsDiff { background: var(--partial-bg); color: var(--partial); }
 .by-lots, .by-withdrew { background: var(--no-bg); color: var(--no); }
@@ -550,7 +632,7 @@ label.check { display: inline-flex; align-items: center; gap: 4px; font-size: 0.
 
 /* A player opened from a shared link, not saved yet. */
 .players-edit .linked-row { background: var(--info-bg); }
-.link-tag { font-size: 0.78rem; font-weight: 600; color: var(--info); margin-right: 6px; }
+.link-tag { font-size: var(--fs-xs); font-weight: 600; color: var(--info); margin-right: 6px; }
 .player-compare thead th.linked-col { box-shadow: inset 0 -3px 0 var(--info); }
 
 .ok { color: var(--yes); }
@@ -558,12 +640,12 @@ label.check { display: inline-flex; align-items: center; gap: 4px; font-size: 0.
 
 .shared {
   margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--border);
-  font-size: 0.82rem; color: var(--muted); display: grid; gap: 4px;
+  font-size: var(--fs-xs); color: var(--muted); display: grid; gap: 4px;
 }
 
 .pill {
   display: inline-block; margin: 2px 4px 2px 0; padding: 1px 9px; border-radius: 999px;
-  background: var(--tint, var(--tint-other)); color: var(--text); font-size: 0.82rem; font-weight: 600;
+  background: var(--tint, var(--tint-other)); color: var(--text); font-size: var(--fs-xs); font-weight: 600;
   text-decoration: none; border: 1px solid color-mix(in srgb, var(--strong, var(--strong-other)) 35%, transparent);
   white-space: nowrap;
 }
@@ -573,10 +655,14 @@ a.pill:hover { border-color: var(--strong); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 22px; }
 .chips a {
   padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface);
-  color: var(--text); text-decoration: none; font-size: 0.9rem;
+  color: var(--text); text-decoration: none; font-size: var(--fs-md);
 }
 .chips a:hover { border-color: var(--accent); }
 .chips a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: var(--surface); font-weight: 600; }
+.field-label { margin: 0 0 6px; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
+.area-title { font-size: var(--fs-2xl); margin: 0 0 4px; letter-spacing: -0.01em; }
+/* Phones swap the chips for this drop-down (styled like the Tiers page's). */
+.area-select { display: none; }
 
 mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1px; }
 
@@ -586,8 +672,13 @@ input[type="date"], select {
 }
 
 .status {
-  display: inline-flex; align-items: center; gap: 2px; padding: 2px 10px; border-radius: 999px;
-  font-size: 0.8rem; font-weight: 650; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px;
+  font-size: var(--fs-xs); font-weight: 650; white-space: nowrap;
+}
+/* The info "i" in a ring, so it doesn't read as the first letter of the label. */
+.s-info > [aria-hidden] {
+  display: inline-grid; place-items: center; flex: none; width: 1.25em; height: 1.25em; border-radius: 50%;
+  border: 1.5px solid currentColor; font-size: 0.85em; font-weight: 800; line-height: 1;
 }
 .s-yes { color: var(--yes); background: var(--yes-bg); }
 .s-partial { color: var(--partial); background: var(--partial-bg); }
@@ -598,39 +689,39 @@ input[type="date"], select {
   margin-top: 28px; background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 12px 16px;
 }
-.assumptions summary { cursor: pointer; font-weight: 600; }
+.assumptions > summary { display: flex; align-items: center; gap: 10px; font-weight: 600; }
 .assumptions ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); }
 .assumptions li { margin-bottom: 6px; }
 
 /* Notes */
-.prose { max-width: 70ch; }
+.prose { max-width: 70ch; overflow-wrap: anywhere; } /* long URLs break instead of running off a phone */
 .prose ul { padding-left: 20px; }
 .prose li { margin-bottom: 8px; }
 .prose .section-title { margin-top: 28px; }
 .prose .section-title:first-child { margin-top: 0; }
 
 .footer {
-  color: var(--muted); font-size: 0.85rem; padding-top: 22px; padding-bottom: 32px;
-  border-top: 3px double var(--border);
+  color: var(--muted); font-size: var(--fs-sm); padding-bottom: 32px;
 }
+/* Drawn inside the padding, so the rule lines up with the content above it. */
+.footer::before { content: ""; display: block; border-top: 3px double var(--border); margin-bottom: 22px; }
 .footer p { margin: 0; max-width: 80ch; }
 
 @media (max-width: 860px) {
   .split { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .tier-nav { display: none; }
   .tier-select { display: grid; gap: 4px; margin-bottom: 14px; }
-  .tier-select label { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
 }
+.tier-select label, .area-select label { font-size: var(--fs-sm); color: var(--muted); font-weight: 600; }
 
 @media (max-width: 520px) {
   .data-table th, .data-table td { padding: 8px 10px; }
   .rules tbody th { min-width: 110px; }
-  .compare .tiers-cell { min-width: 150px; }
-  .pill { white-space: normal; }
 }
 
 @media (max-width: 760px) {
   /* Stack each tier label above its row of squares so all eleven grades fit. */
+  .grades-layout { width: auto; }
   .chart-box { padding: 0 8px 8px; width: auto; }
   .grade-chart thead {
     position: sticky; top: 0; z-index: 2; background: var(--surface);
@@ -655,7 +746,7 @@ input[type="date"], select {
   .players-edit tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 8px; padding: 10px; border-bottom: 1px solid var(--border); }
   .players-edit td { border: 0; padding: 0; min-width: 0; }
   .players-edit .f-name, .players-edit .f-dob { grid-column: span 3; }
-  .players-edit td[data-label]::before { content: attr(data-label); display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 2px; }
+  .players-edit td[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-xs); color: var(--muted); margin-bottom: 2px; }
   .players-edit input, .players-edit select { width: 100%; min-width: 0; }
   .players-edit .row-actions { grid-column: 1 / -1; text-align: right; width: auto; }
 }
@@ -666,9 +757,29 @@ input[type="date"], select {
   .players-edit .f-name, .players-edit .f-dob { grid-column: auto; }
 }
 
-@media (max-width: 640px) {
-  .player-compare thead th { min-width: 150px; }
-  .player-compare .tier-cell { white-space: normal; min-width: 110px; }
+@media (min-width: 900px) {
+  /* Wide screens: fixed layout, so the player columns share the width equally
+     rather than each sizing to its longest note. */
+  .player-compare { table-layout: fixed; }
+  .player-compare thead th.corner { width: 170px; }
+  .player-compare thead th { min-width: 0; }
+}
+
+@media (min-width: 600px) and (max-width: 899px) {
+  /* Tablets and foldables: a narrower tier column, and player columns that
+     share the rest, so three players fit at 712px. */
+  .player-compare thead th { min-width: 0; }
+  .player-compare thead th.corner, .player-compare .tier-cell { min-width: 0; width: 120px; white-space: normal; }
+}
+
+@media (max-width: 599px) {
+  /* Phones: a slim tier column, so more of each player column shows. */
+  .player-compare thead th { min-width: 160px; }
+  .player-compare thead th.corner, .player-compare .tier-cell {
+    min-width: 0; width: 96px; white-space: normal; padding-inline: 8px; font-size: var(--fs-sm);
+  }
+  .player-compare thead th.corner { font-size: var(--fs-2xs); }
+  .player-compare .tier-cell { border-left-width: 4px; }
 }
 
 @media (max-width: 899px) {
@@ -694,9 +805,18 @@ input[type="date"], select {
   .logo { width: 36px; height: 36px; }
   .brand h1 { font-size: clamp(1.1rem, 5.4vw, 1.35rem); margin: 0; }
   .masthead .eyebrow, .lede { display: none; }
-  .lang select { min-height: 40px; padding: 4px 6px; font-size: 0.85rem; max-width: 7.5em; }
+  /* The language picker sizes to its longest name, with room for the arrow. */
+  .lang select { min-height: 40px; padding: 4px 8px 4px 10px; font-size: var(--fs-sm); }
   .site-search input { padding: 9px 14px; }
-  .tabs a { padding: 8px 9px 9px; font-size: 0.92rem; }
+  /* Six tabs in a balanced 3 × 2 grid rather than an uneven wrap. */
+  /* The tint dims the court lines behind the two rows of tabs. */
+  .tabs {
+    display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 4px;
+    background: color-mix(in srgb, var(--head-bg) 88%, transparent);
+  }
+  /* 1fr columns never squeeze a label below its own width, so a long one
+     (French "Puis-je m'inscrire ?") widens its column instead of being cut. */
+  .tabs a { padding: 8px 2px 9px; font-size: var(--fs-sm); text-align: center; white-space: nowrap; }
 }
 
 @media (max-width: 760px) {
@@ -713,11 +833,77 @@ input[type="date"], select {
   .calc-matches .pair { grid-column: 1 / 3; white-space: normal; }
   /* The row's clear button sits at the right of the pairing line. */
   .calc-matches .row-clear-cell { grid-row: 1; grid-column: 3; justify-self: end; width: auto; }
-  .calc-matches .game-cell[data-label]::before { content: attr(data-label); display: block; font-size: 0.72rem; color: var(--muted); }
+  .calc-matches .game-cell[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-2xs); color: var(--muted); }
   .score-input { width: 2.9em; padding: 4px 2px; }
   /* Standings: difference under the totals, tighter cells, so the table fits a phone. */
-  .calc-standings th, .calc-standings td { padding: 7px 6px; font-size: 0.86rem; }
-  .calc-standings thead th { font-size: 0.68rem; letter-spacing: 0.02em; }
-  .calc-standings .by { white-space: normal; }
+  .calc-standings th, .calc-standings td { padding: 7px 6px; font-size: var(--fs-sm); }
+  .calc-standings thead th { font-size: var(--fs-2xs); letter-spacing: 0.02em; white-space: nowrap; }
   .dash { margin: 0 1px; }
+  /* Results grid: tighter cells so a group of four fits a phone. */
+  .cross th, .cross td { padding: 6px 4px; }
+  .cross td { min-width: 44px; font-size: var(--fs-xs); }
+  .cross thead th { font-size: var(--fs-xs); }
+  .cross thead th.num { white-space: normal; }
+
+  /* Scoring controls: label | control rows, so a label never wraps away from its box. */
+  .calc-fields { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 10px; }
+  .calc-fields .field { display: contents; }
+  .calc-fields select { justify-self: stretch; width: 100%; min-width: 0; }
+  .calc-fields .preset-summary, .calc-fields label.check { grid-column: 1 / -1; }
+  /* The tournament list has long names: label above, the select full width, its summary below. */
+  .calc-fields.preset-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .calc-fields .preset-summary { margin-top: 2px; }
+
+  /* Rule tables (tier, compare, search): each row's cells stack, so the rule
+     text gets the full width. The column headings stay for screen readers. */
+  .rules thead, .compare thead {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  .rules, .rules tbody, .compare, .compare tbody { display: block; }
+  .rules tbody tr, .compare tbody tr {
+    display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 10px 12px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .rules tbody tr:last-child, .compare tbody tr:last-child { border-bottom: 0; }
+  .rules tbody th, .rules td, .compare tbody th, .compare td, .compare .tiers-cell {
+    border: 0; width: auto; min-width: 0; padding: 0;
+  }
+  .data-table.rules tbody tr:hover > td, .data-table.compare tbody tr:hover > td { background: none; }
+  /* Tier page: the area as a heading, its rule below. Search: the area, then
+     its tiers, then the rule. Compare: the tiers, then the rule. */
+  .rules tbody tr { gap: 2px; }
+  /* The area label becomes a small eyebrow, so it doesn't run into the rule text. */
+  .rules tbody th, .search tbody th {
+    font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding-bottom: 4px;
+  }
+  .data-table.rules tbody th a, .data-table.search tbody th a { color: inherit; }
+  .compare .tiers-cell .pill { margin-block: 1px; }
+
+  /* Calculator: slimmer card padding, and the outlook loses its own box
+     (keeping the gold bar), so nested borders don't eat the width. */
+  .groups-part { padding-inline: 12px; }
+  .groups-part .outlook {
+    border: 0; border-left: 4px solid var(--shuttle-cork); border-radius: 0; box-shadow: none;
+    background: none; padding: 4px 0 4px 12px;
+  }
+
+  /* Outlook: each row stacks, the result first and then the results it needs,
+     so the conditions get the full width. */
+  .outlook-table thead {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  .outlook-table, .outlook-table tbody { display: block; }
+  .outlook-table tbody tr {
+    display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "result" "if";
+    padding: 8px 10px; border-bottom: 1px solid var(--border);
+  }
+  .outlook-table tbody tr:last-child { border-bottom: 0; }
+  .outlook-table td { border: 0; padding: 0; }
+  .outlook-table td:first-child { grid-area: if; }
+  .outlook-table td:last-child { grid-area: result; margin-bottom: 4px; }
+  .outlook-table .status { white-space: normal; border-radius: 8px; max-width: 100%; }
+
+  /* Compare: a drop-down of rule areas instead of seventeen chips. */
+  .area-chips, .area-chips-label { display: none; }
+  .area-select { display: grid; gap: 4px; margin-bottom: 18px; }
 }

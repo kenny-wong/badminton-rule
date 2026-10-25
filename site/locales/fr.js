@@ -8,6 +8,7 @@ export default {
   'site.lede': 'Le tableau des règles des tournois de Badminton England, catégorie par catégorie et règle par règle.',
   'site.searchLabel': 'Rechercher dans les règles',
   'site.searchPlaceholder': 'Rechercher, p. ex. « temps de repos » ou « grade E »',
+  'site.searchShort': 'Rechercher une règle…',
   'site.language': 'Langue',
   'site.loading': 'Chargement des règles…',
   'site.loadError': 'Impossible de charger les règles ({error}). Essayez de recharger la page.',
@@ -43,6 +44,7 @@ export default {
   'status.partial': 'Certains tableaux',
   'status.no': 'Ne peut pas s’inscrire',
   'status.info': 'Voir la note',
+  'status.noLimits': 'Aucune limite de grade',
   'verdict.allowed': 'Autorisé',
   'verdict.barred': 'Interdit',
 
@@ -56,7 +58,8 @@ export default {
 
   'grades.docTitle': 'Qui peut s’inscrire',
   'grades.title': 'Grades admis dans chaque catégorie de tournoi',
-  'grades.lede': 'Les grades vont de A (le plus élevé) à K et s’appliquent discipline par discipline. Choisissez un grade pour voir toutes les catégories auxquelles il donne accès. Survolez une case pour voir la règle correspondante.',
+  'grades.lede': 'Les grades vont de A (le plus élevé) à K et s’appliquent discipline par discipline. Choisissez un grade pour voir toutes les catégories auxquelles il donne accès. Touchez ou survolez une case pour voir la règle correspondante.',
+  'grades.sideHint': 'Choisissez un grade ci-dessus, ou une lettre en haut du tableau, pour lister toutes les catégories auxquelles il donne accès.',
   'grades.all': 'Tous les grades',
   'grades.pickerLabel': 'Mettre un grade en évidence',
   'grades.legendLabel': 'Légende',
@@ -84,6 +87,8 @@ export default {
   'shared.same': 'Identique pour {tiers}',
   'shared.combined': 'Une seule règle commune aux rubriques {areas}.',
 
+  'compare.title': 'Comparer une règle entre catégories',
+  'compare.lede': 'Choisissez une rubrique pour voir ce qui change d’une catégorie à l’autre.',
   'compare.navLabel': 'Rubriques',
   'compare.one': 'Une seule règle pour toutes les catégories.',
   'compare.many': '{n} règles différentes pour {total} catégories. Les catégories qui ont la même règle sont regroupées.',
@@ -95,6 +100,7 @@ export default {
   'search.countMany': '{n} règles correspondent à « {q} »',
   'search.none': 'Aucun résultat pour « {q} »',
   'search.tip': 'Essayez un mot plus court, une catégorie comme « Junior Bronze » ou un grade comme « grade E ».',
+  'search.matchedEnglish': 'Affiché car le texte anglais original contient « {words} ».',
 
   'check.title': 'Puis-je m’inscrire ?',
   'check.dob': 'Date de naissance',

@@ -8,6 +8,7 @@ export default {
   'site.lede': 'Badminton England’s tournament terms & conditions matrix, tier by tier and rule by rule.',
   'site.searchLabel': 'Search the rules',
   'site.searchPlaceholder': 'Search rules, e.g. “rest period” or “grade E”',
+  'site.searchShort': 'Search rules…',
   'site.language': 'Language',
   'site.loading': 'Loading the rules…',
   'site.loadError': 'Couldn’t load the rules ({error}). Try reloading the page.',
@@ -43,6 +44,7 @@ export default {
   'status.partial': 'Some events',
   'status.no': 'Can’t enter',
   'status.info': 'See note',
+  'status.noLimits': 'No grade limits',
   'verdict.allowed': 'Allowed',
   'verdict.barred': 'Barred',
 
@@ -56,7 +58,8 @@ export default {
 
   'grades.docTitle': 'Who can enter',
   'grades.title': 'Which grades can enter each tier',
-  'grades.lede': 'Grades run from A (highest) to K, and apply per discipline. Pick a grade to see every tier it can enter. Hover a square for the rule behind it.',
+  'grades.lede': 'Grades run from A (highest) to K, and apply per discipline. Pick a grade to see every tier it can enter. Tap or hover over a square for the rule behind it.',
+  'grades.sideHint': 'Pick a grade above, or a letter at the top of the chart, to list every tier that grade can enter.',
   'grades.all': 'All grades',
   'grades.pickerLabel': 'Highlight a grade',
   'grades.legendLabel': 'Key',
@@ -84,6 +87,8 @@ export default {
   'shared.same': 'Same for {tiers}',
   'shared.combined': 'One combined rule for {areas}.',
 
+  'compare.title': 'Compare a rule across tiers',
+  'compare.lede': 'Pick a rule area to see how it differs from tier to tier.',
   'compare.navLabel': 'Rule areas',
   'compare.one': 'One rule covers every tier.',
   'compare.many': '{n} different rules across {total} tiers. Tiers with the same rule are grouped.',
@@ -95,6 +100,7 @@ export default {
   'search.countMany': '{n} rules match “{q}”',
   'search.none': 'Nothing matches “{q}”',
   'search.tip': 'Try a shorter word, a tier such as “Junior Bronze”, or a grade such as “grade E”.',
+  'search.matchedEnglish': 'Listed because the English original contains “{words}”.',
 
   'check.title': 'Can I enter?',
   'check.dob': 'Date of birth',

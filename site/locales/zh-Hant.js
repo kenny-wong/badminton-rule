@@ -8,6 +8,7 @@ export default {
   'site.lede': 'Badminton England 賽事條款及細則規則總表，按級別逐項列出每條規則。',
   'site.searchLabel': '搜尋規則',
   'site.searchPlaceholder': '搜尋規則，例如「休息時間」或「E 級」',
+  'site.searchShort': '搜尋規則…',
   'site.language': '語言',
   'site.loading': '正在載入規則…',
   'site.loadError': '無法載入規則（{error}）。請重新載入頁面。',
@@ -43,6 +44,7 @@ export default {
   'status.partial': '部分賽項',
   'status.no': '不可報名',
   'status.info': '見備註',
+  'status.noLimits': '沒有等級限制',
   'verdict.allowed': '可報名',
   'verdict.barred': '不可報名',
 
@@ -56,7 +58,8 @@ export default {
 
   'grades.docTitle': '誰可以報名',
   'grades.title': '各級別可報名的等級',
-  'grades.lede': '等級由 A（最高）至 K，按項目分別計算。選擇一個等級，即可查看該等級可報名的所有級別。將滑鼠移到方格上，可查看背後的規則。',
+  'grades.lede': '等級由 A（最高）至 K，按項目分別計算。選擇一個等級，即可查看該等級可報名的所有級別。點按方格或將滑鼠移到方格上，可查看背後的規則。',
+  'grades.sideHint': '在上方選擇一個等級，或點按圖表頂部的字母，即可列出該等級可報名的所有級別。',
   'grades.all': '所有等級',
   'grades.pickerLabel': '標示等級',
   'grades.legendLabel': '圖例',
@@ -84,6 +87,8 @@ export default {
   'shared.same': '與 {tiers} 相同',
   'shared.combined': '{areas}合併為同一條規則。',
 
+  'compare.title': '比較各級別的規則',
+  'compare.lede': '選擇一個規則項目，看看各級別之間有何不同。',
   'compare.navLabel': '規則項目',
   'compare.one': '所有級別適用同一條規則。',
   'compare.many': '{total} 個級別共有 {n} 條不同規則。規則相同的級別已歸為一組。',
@@ -95,6 +100,7 @@ export default {
   'search.countMany': '有 {n} 條規則符合「{q}」',
   'search.none': '沒有規則符合「{q}」',
   'search.tip': '請嘗試較短的字詞、級別名稱（例如「Junior Bronze」）或等級（例如「E 級」）。',
+  'search.matchedEnglish': '因英文原文包含「{words}」而列出。',
 
   'check.title': '我可以報名嗎？',
   'check.dob': '出生日期',

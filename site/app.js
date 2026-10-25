@@ -6,7 +6,7 @@ import { loadProfiles, newProfile, saveProfiles } from './profiles.js';
 const view = document.getElementById('view');
 const searchInput = document.getElementById('search');
 
-const STATUS_ICONS = { yes: '✓', partial: '◐', no: '✕', info: 'i' };
+const STATUS_ICONS = { yes: '✓', partial: '◐', no: '✕', info: 'i' }; // the info "i" is drawn in a ring by CSS
 
 let data;
 let tierById;
@@ -144,9 +144,14 @@ function rowName(row) {
 
 let tooltip;
 
-// One floating tooltip for the whole chart, driven by event delegation.
+// One floating tooltip for the whole chart, driven by event delegation. A tap
+// on a phone fires the same mouseover; scrolling hides the tip, since it is
+// pinned to the window rather than to its square.
 function attachTooltip(chart) {
-  tooltip ??= document.body.appendChild(h('div', { class: 'chart-tip', role: 'tooltip', hidden: true }));
+  if (!tooltip) {
+    tooltip = document.body.appendChild(h('div', { class: 'chart-tip', role: 'tooltip', hidden: true }));
+    window.addEventListener('scroll', () => (tooltip.hidden = true), { passive: true });
+  }
   chart.addEventListener('mouseover', (e) => {
     const cell = e.target.closest('td[data-tip]');
     if (!cell) return;
@@ -166,10 +171,11 @@ function gradeSummary(rows, grade) {
   const groups = Object.keys(CELL_ICONS).map((state) => ({ state, rows: rows.filter((r) => r.cells[grade] === state) }));
   return h('section', { class: 'grade-summary', 'aria-live': 'polite' },
     h('h3', {}, t('grade.n', { grade })),
-    groups.filter((g) => g.rows.length).map((g) =>
+    // Newspaper columns rather than a grid, so the short lists stack beside the long one.
+    h('div', { class: 'summary-groups' }, groups.filter((g) => g.rows.length).map((g) =>
       h('div', { class: 'summary-group' },
         h('p', { class: 'summary-head' }, h('span', { class: `swatch cell-${g.state}`, 'aria-hidden': 'true' }, CELL_ICONS[g.state]), h('span', {}, t(`cell.${g.state}`), h('span', { class: 'count' }, ` (${g.rows.length})`))),
-        h('ul', {}, g.rows.map((r) => h('li', {}, h('a', { href: `#/tier/${r.tier}` }, r.label), r.note ? h('span', { class: 'muted' }, ` · ${say(r.note)}`) : null))))));
+        h('ul', {}, g.rows.map((r) => h('li', {}, h('a', { href: `#/tier/${r.tier}` }, r.label), r.note ? h('span', { class: 'muted' }, ` · ${say(r.note)}`) : null)))))));
 }
 
 function renderGrades(selected) {
@@ -204,15 +210,33 @@ function renderGrades(selected) {
     h('tbody', {}, body));
   attachTooltip(chart);
 
+  // Wide screens: chart on the left, the key and the picked grade's summary in a
+  // sticky column on the right. Narrower: summary, key, then the chart.
   fill(view,
     h('h2', { class: 'section-title' }, t('grades.title')),
     h('p', { class: 'lede-small' }, t('grades.lede')),
     picker,
-    grade ? gradeSummary(rows, grade) : null,
-    legend,
-    h('div', { class: 'chart-box' }, chart),
-    h('p', { class: 'muted chart-foot' }, tParts('grades.foot', { link: h('a', { href: '#/check' }, t('tab.check')) })));
+    h('div', { class: 'grades-layout' },
+      h('aside', { class: 'grade-side' },
+        legend,
+        grade ? gradeSummary(rows, grade) : h('p', { class: 'side-hint muted' }, t('grades.sideHint'))),
+      h('div', { class: 'grades-main' },
+        h('div', { class: 'chart-box' }, chart),
+        h('p', { class: 'muted chart-foot' }, tParts('grades.foot', { link: h('a', { href: '#/check' }, t('tab.check')) })))));
+  const lists = view.querySelector('.summary-groups');
+  if (lists) fadeWhenCut(lists);
 }
+
+/**
+ * On wide screens the summary's lists scroll inside the sticky column; while
+ * more is hidden below, the class fades their bottom edge as a hint.
+ */
+function fadeWhenCut(el) {
+  const update = () => el.classList.toggle('more-below', el.scrollHeight - el.scrollTop - el.clientHeight > 2);
+  el.addEventListener('scroll', update, { passive: true });
+  update();
+}
+window.addEventListener('resize', () => view.querySelector('.summary-groups')?.dispatchEvent(new Event('scroll')));
 
 function tierSelect(currentId) {
   const select = h('select', { id: 'tier-select', onchange: (e) => (location.hash = `#/tier/${e.target.value}`) },
@@ -255,10 +279,20 @@ function renderCompare(areaId) {
   const rules = groupsByArea.get(area.id);
   const combined = (rule) => combinedNote(rule) && h('div', { class: 'shared' }, combinedNote(rule));
 
+  // Chips on wider screens; phones get a drop-down instead (CSS shows one or the other).
+  const areaSelect = h('div', { class: 'area-select' },
+    h('label', { for: 'area-select' }, t('tier.ruleArea')),
+    h('select', { id: 'area-select', onchange: (e) => (location.hash = `#/compare/${e.target.value}`) },
+      data.areas.map((a) => h('option', { value: a.id, selected: a.id === area.id }, areaLabel(a.id)))));
+
   fill(view,
-    h('nav', { class: 'chips', 'aria-label': t('compare.navLabel') }, data.areas.map((a) =>
+    h('h2', { class: 'section-title' }, t('compare.title')),
+    h('p', { class: 'lede-small' }, t('compare.lede')),
+    h('p', { class: 'field-label area-chips-label', 'aria-hidden': 'true' }, t('tier.ruleArea')),
+    h('nav', { class: 'chips area-chips', 'aria-label': t('compare.navLabel') }, data.areas.map((a) =>
       h('a', { href: `#/compare/${a.id}`, 'aria-current': a.id === area.id ? 'page' : null }, areaLabel(a.id)))),
-    h('h2', { class: 'section-title' }, areaLabel(area.id)),
+    areaSelect,
+    h('h3', { class: 'area-title' }, areaLabel(area.id)),
     h('p', { class: 'muted' }, rules.length === 1 ? t('compare.one') : t('compare.many', { n: rules.length, total: data.tiers.length })),
     translatedNote(),
     table('compare', [h('th', { scope: 'col' }, t('compare.tiers')), h('th', { scope: 'col' }, t('tier.rule'))],
@@ -302,16 +336,35 @@ function renderSearch(query) {
     return patterns.every((p) => p.test(haystack));
   });
   const mark = highlighter(tokens);
+  const marked = (text) => (mark ? mark(text) : text);
+
+  // Words of the English original that matched where the shown translation
+  // didn't, e.g. "restrictions" for "rest", so the reader can see why a rule
+  // is listed. Empty when every search word shows up on the page.
+  const englishOnly = (rule) => {
+    const shown = [...rule.text.map(td), ...rule.areas.map(areaLabel), ...rule.tiers.map((t) => tierById.get(t).name)].join(' ');
+    const english = [...rule.text, ...rule.areas.map((a) => data.areas.find((x) => x.id === a).label)];
+    const words = tokens.filter((_, i) => !patterns[i].test(shown)).flatMap((token) => {
+      const pattern = new RegExp(`[\\p{L}\\p{N}]*${tokenSource(token)}[\\p{L}\\p{N}]*`, 'iu');
+      const found = english.map((line) => pattern.exec(line)?.[0]).find(Boolean);
+      return found ? [found] : [];
+    });
+    return [...new Set(words)];
+  };
 
   fill(view,
     h('h2', { class: 'section-title' }, matches.length === 1 ? t('search.countOne', { q: query })
       : matches.length ? t('search.countMany', { n: matches.length, q: query }) : t('search.none', { q: query })),
     matches.length ? translatedNote() : h('p', { class: 'muted' }, t('search.tip')),
     matches.length ? table('compare search', [h('th', { scope: 'col' }, t('tier.ruleArea')), h('th', { scope: 'col' }, t('compare.tiers')), h('th', { scope: 'col' }, t('tier.rule'))],
-      matches.map((rule) => h('tr', {},
-        h('th', { scope: 'row' }, rule.areas.map((a, i) => [i ? ' & ' : '', h('a', { href: `#/compare/${a}` }, areaLabel(a))])),
-        h('td', { class: 'tiers-cell' }, rule.tiers.length === data.tiers.length ? h('span', { class: 'pill' }, t('compare.everyTier')) : rule.tiers.map((t) => tierPill(t))),
-        h('td', {}, ruleText(rule, mark))))) : null);
+      matches.map((rule) => {
+        const words = currentLocale() === 'en' ? [] : englishOnly(rule);
+        return h('tr', {},
+          h('th', { scope: 'row' }, rule.areas.map((a, i) => [i ? ' & ' : '', h('a', { href: `#/compare/${a}` }, marked(areaLabel(a)))])),
+          h('td', { class: 'tiers-cell' }, rule.tiers.length === data.tiers.length ? h('span', { class: 'pill' }, t('compare.everyTier')) : rule.tiers.map((t) => tierPill(t))),
+          h('td', {}, ruleText(rule, mark),
+            words.length ? h('p', { class: 'row-note search-note' }, tParts('search.matchedEnglish', { words: marked(words.join(t('list.sep'))) })) : null));
+      })) : null);
 }
 
 function gradeOptions(selected) {
@@ -321,8 +374,8 @@ function gradeOptions(selected) {
   ];
 }
 
-function statusBadge(status) {
-  return h('span', { class: `status s-${status}` }, h('span', { 'aria-hidden': 'true' }, STATUS_ICONS[status]), ` ${t(`status.${status}`)}`);
+function statusBadge(status, label = t(`status.${status}`)) {
+  return h('span', { class: `status s-${status}` }, h('span', { 'aria-hidden': 'true' }, STATUS_ICONS[status]), ` ${label}`);
 }
 
 // A player opened from a shared #/check/<dob>/<singles>/<doubles>/<mixed> link.
@@ -452,20 +505,30 @@ function renderPlayerComparison() {
             h('span', { class: 'player-name' }, profileName(p)),
             h('span', { class: 'player-line' }, playerLine(p)),
             h('span', { class: 'player-line' }, t('players.canEnter', { n: enterable(p) })))))),
-        h('tbody', {}, data.circuits.map((c) => [
-          h('tr', { class: `group-row c-${c.id}` }, h('th', { scope: 'colgroup', colspan: ready.length + 1 }, circuitLabel(c))),
-          data.tiers.filter((t) => t.circuit === c.id).map((tier) => h('tr', {},
-            h('th', { scope: 'row', class: `tier-cell c-${c.id}` }, tierHeader(tier.id)),
-            ready.map((p) => {
-              const r = results.get(p.id).get(tier.id);
-              // Tiers with no age or grade limits (Masters, Para, Other) just get their note.
-              if (r.status === 'info') return h('td', { class: 'verdict-cell v-info' }, h('p', { class: 'cell-note' }, say(r.summary)));
-              return h('td', { class: `verdict-cell v-${r.status}` },
-                statusBadge(r.status),
-                miniEvents(r),
-                h('p', { class: 'cell-note' }, say(r.summary)));
-            }))),
-        ])))),
+        h('tbody', {}, data.circuits.map((c) => {
+          const tiers = data.tiers.filter((t) => t.circuit === c.id);
+          // Tiers with no age or grade limits (Masters, Para, Other) give every
+          // player the same note: print it once in the group's heading row, and
+          // just a "no grade limits" pill in each cell.
+          const notes = new Set(ready.flatMap((p) => tiers.map((tier) => results.get(p.id).get(tier.id)))
+            .map((r) => (r.status === 'info' ? r.summary.key : null)));
+          const shared = notes.size === 1 && !notes.has(null) ? { key: [...notes][0] } : null;
+          return [
+            h('tr', { class: `group-row c-${c.id}` }, h('th', { scope: 'colgroup', colspan: ready.length + 1 },
+              circuitLabel(c), shared ? h('span', { class: 'group-note' }, say(shared)) : null)),
+            tiers.map((tier) => h('tr', {},
+              h('th', { scope: 'row', class: `tier-cell c-${c.id}` }, tierHeader(tier.id)),
+              ready.map((p) => {
+                const r = results.get(p.id).get(tier.id);
+                if (r.status === 'info' && shared) return h('td', { class: 'verdict-cell v-info' }, statusBadge('info', t('status.noLimits')));
+                if (r.status === 'info') return h('td', { class: 'verdict-cell v-info' }, statusBadge('info'), h('p', { class: 'cell-note' }, say(r.summary)));
+                return h('td', { class: `verdict-cell v-${r.status}` },
+                  statusBadge(r.status),
+                  miniEvents(r),
+                  h('p', { class: 'cell-note' }, say(r.summary)));
+              }))),
+          ];
+        })))),
     h('p', { class: 'muted chart-foot' }, t('players.shortKey', short)));
 }
 
@@ -903,7 +966,7 @@ function loserPoints(result, open, nameOf) {
 function verdictBadge(type, text) {
   const icon = { yes: '✓', no: '✕' }[type] ?? '?';
   const cls = { yes: 's-yes', no: 's-no' }[type] ?? 's-partial';
-  return h('span', { class: `status ${cls}` }, h('span', { 'aria-hidden': 'true' }, icon), ` ${text}`);
+  return h('span', { class: `status ${cls} v-${type}` }, h('span', { 'aria-hidden': 'true' }, icon), ` ${text}`);
 }
 
 function dependsText(reasons) {
@@ -993,9 +1056,9 @@ function outlookPanel() {
 
   return h('section', { class: 'outlook' },
     h('h4', {}, t('groups.outlookTitle')),
-    h('div', { class: 'calc-controls' },
-      h('label', { for: 'outlook-entry' }, t('groups.outlookFor')), entrySelect,
-      h('label', { for: 'outlook-places' }, t('groups.outlookTarget')), placesSelect),
+    h('div', { class: 'calc-controls calc-fields' },
+      field(t('groups.outlookFor'), entrySelect),
+      field(t('groups.outlookTarget'), placesSelect)),
     body,
     h('p', { class: 'muted outlook-note' }, t('groups.outlookNote')));
 }
@@ -1020,7 +1083,7 @@ function crossTable(result) {
   return [
     h('div', { class: 'calc-heading' }, h('h4', {}, t('groups.crossTitle'))),
     h('p', { class: 'muted cross-hint' }, t('groups.crossHint')),
-    h('div', { class: 'table-scroll' }, h('table', { class: 'data-table cross' },
+    h('div', { class: 'table-scroll cross-scroll' }, h('table', { class: 'data-table cross' },
       h('thead', {}, h('tr', {},
         h('th', { scope: 'col', class: 'corner' }, ''),
         players.map((p) => h('th', { scope: 'col' }, p.name)),
@@ -1101,6 +1164,11 @@ function markCustom() {
   if (summary) summary.textContent = scoringSummary();
 }
 
+/** A label and its control, kept together so they wrap as one piece. */
+function field(label, control) {
+  return h('span', { class: 'field' }, h('label', { for: control.id }, label), control);
+}
+
 function renderGroups() {
   setTitle(t('groups.docTitle'));
   const formatSelect = h('select', { id: 'calc-format', onchange: (e) => {
@@ -1176,29 +1244,29 @@ function renderGroups() {
       h('section', { class: 'prose groups-section' },
         h('h4', { class: 'sub-title' }, t('groups.withdrawTitle')),
         h('ul', {}, h('li', {}, t('groups.withdraw1')), h('li', {}, t('groups.withdraw2'))))),
-    h('section', { class: 'groups-part groups-section calc', id: 'calc' },
-      h('h3', { class: 'part-title' }, `2. ${t('groups.calcTitle')}`),
+    h('section', { class: 'groups-part calc', id: 'calc', 'aria-labelledby': 'calc-title' },
+      h('div', { class: 'part-head' }, h('h3', { class: 'part-title', id: 'calc-title' }, `2. ${t('groups.calcTitle')}`)),
       h('p', { class: 'lede-small' }, t('groups.calcLede')),
       h('div', { class: 'calc-controls' },
         h('span', { class: 'muted' }, t('groups.examples')),
         example('two', 'groups.exTwo'), example('circle', 'groups.exCircle'),
         example('points', 'groups.exPoints')),
-      h('div', { class: 'calc-controls' },
-        h('label', { for: 'calc-preset' }, t('groups.preset')), presetSelect,
+      h('div', { class: 'calc-controls calc-fields preset-row' },
+        field(t('groups.preset'), presetSelect),
         h('span', { id: 'preset-summary', class: 'muted preset-summary' }, scoringSummary())),
-      h('div', { class: 'calc-controls' },
-        h('label', { for: 'calc-event' }, t('groups.event')), eventSelect,
-        h('label', { for: 'calc-format' }, t('groups.format')), formatSelect,
-        h('label', { for: 'calc-size' }, t('groups.size')), sizeSelect,
-        h('label', { for: 'calc-points' }, t('groups.gamePoints')), pointsSelect,
+      h('div', { class: 'calc-controls calc-fields' },
+        field(t('groups.event'), eventSelect),
+        field(t('groups.format'), formatSelect),
+        field(t('groups.size'), sizeSelect),
+        field(t('groups.gamePoints'), pointsSelect),
         h('label', { class: 'check', title: t('groups.noSettingHint', { deuce: `${calc.gamePoints - 1}–${calc.gamePoints - 1}` }) },
           h('input', { type: 'checkbox', id: 'calc-nosetting', checked: calc.noSetting,
             onchange: (e) => { calc.noSetting = e.target.checked; markCustom(); markWinners(); drawGroupResult(); } }),
           ` ${t('groups.noSetting')}`)),
       h('div', { id: 'calc-inputs' }),
       h('div', { id: 'calc-result', 'aria-live': 'polite' })),
-    h('section', { class: 'prose groups-section' },
-      h('h3', {}, t('groups.sourcesTitle')),
+    h('section', { class: 'sources' },
+      h('h4', {}, t('groups.sourcesTitle')),
       h('ul', {},
         h('li', {}, h('a', { href: 'https://images.gc.badmintonenglandservices.co.uk/53012730-1ee3-11f1-a060-b1b720430faa.pdf', rel: 'noopener' }, t('groups.source1'))),
         h('li', {}, h('a', { href: 'https://www.badminton.org.au/wp-content/uploads/2024/01/Section-5.1-General-Competition-Regulations-11-November-2023-V4.0-1.pdf', rel: 'noopener' }, t('groups.source2')))),
@@ -1207,12 +1275,18 @@ function renderGroups() {
   drawGroupResult();
 }
 
+/** Lets a web address break after its dots and slashes, so it can't run off a phone. */
+function softBreaks(text) {
+  return text.split(/((?:https?:\/\/|www\.)[^\s)）。，,]+)/).map((part, i) =>
+    (i % 2 ? part.split(/(?<=[./])/).flatMap((bit, k) => (k ? [h('wbr'), bit] : [bit])) : part));
+}
+
 function renderNotes() {
   setTitle(t('notes.docTitle'));
   fill(view, h('div', { class: 'prose' },
     h('h2', { class: 'section-title' }, t('notes.title')),
     h('p', {}, t('notes.intro')),
-    h('ul', {}, data.notes.map((n) => h('li', {}, td(n)))),
+    h('ul', {}, data.notes.map((n) => h('li', {}, softBreaks(td(n))))),
     h('h2', { class: 'section-title' }, t('notes.about')),
     h('p', {}, t('notes.p1')),
     h('p', {}, t('notes.p2')),
@@ -1220,10 +1294,19 @@ function renderNotes() {
     h('p', {}, tParts('notes.p3', { link: h('a', { href: data.source, rel: 'noopener' }, t('notes.sourceLink')) }))));
 }
 
+// Phones get a short search placeholder, so it isn't cut off mid-phrase.
+const narrowScreen = matchMedia('(max-width: 599px)');
+
+function setSearchPlaceholder() {
+  searchInput.setAttribute('placeholder', t(narrowScreen.matches ? 'site.searchShort' : 'site.searchPlaceholder'));
+}
+narrowScreen.addEventListener('change', setSearchPlaceholder);
+
 // Text that lives in index.html, re-applied whenever the language changes.
 function renderStatic() {
   document.querySelectorAll('[data-i18n]').forEach((el) => (el.textContent = t(el.dataset.i18n)));
   document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => el.setAttribute('placeholder', t(el.dataset.i18nPlaceholder)));
+  setSearchPlaceholder();
   document.querySelectorAll('[data-i18n-aria]').forEach((el) => el.setAttribute('aria-label', t(el.dataset.i18nAria)));
   const source = document.getElementById('source-link').getAttribute('href');
   fill(document.getElementById('footer-text'),

@@ -7,13 +7,14 @@ import { DISCIPLINES, GRADES, parseDate } from './eligibility.js';
 const KEY = 'badminton-tcs:profiles:v1';
 const MAX_PROFILES = 30;
 const MAX_NAME = 60;
+export const GENDERS = ['M', 'F']; // '' when not set
 
 function newId() {
   return globalThis.crypto?.randomUUID?.() ?? `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function newProfile(name = '') {
-  return { id: newId(), name, dob: '', grades: Object.fromEntries(DISCIPLINES.map((d) => [d, ''])) };
+  return { id: newId(), name, gender: '', dob: '', grades: Object.fromEntries(DISCIPLINES.map((d) => [d, ''])) };
 }
 
 /** Keeps only well-formed profiles, so a hand-edited or stale entry can't break the page. */
@@ -25,6 +26,7 @@ export function sanitizeProfiles(raw) {
     .map((p) => ({
       id: typeof p.id === 'string' && p.id ? p.id : newId(),
       name: typeof p.name === 'string' ? p.name.slice(0, MAX_NAME) : '',
+      gender: GENDERS.includes(p.gender) ? p.gender : '',
       dob: typeof p.dob === 'string' && parseDate(p.dob) ? p.dob : '',
       grades: Object.fromEntries(DISCIPLINES.map((d) => [d, GRADES.includes(p.grades?.[d]) ? p.grades[d] : ''])),
     }));

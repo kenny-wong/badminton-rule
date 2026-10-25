@@ -9,8 +9,8 @@ function memoryStorage() {
 }
 
 test('sanitizeProfiles drops bad grades and dates but keeps the profile', () => {
-  const [p] = sanitizeProfiles([{ id: 'a', name: 'Amy', dob: '2013-02-30x', grades: { singles: 'D', doubles: 'Z', mixed: 5 } }]);
-  assert.deepEqual(p, { id: 'a', name: 'Amy', dob: '', grades: { singles: 'D', doubles: '', mixed: '' } });
+  const [p] = sanitizeProfiles([{ id: 'a', name: 'Amy', gender: 'X', dob: '2013-02-30x', grades: { singles: 'D', doubles: 'Z', mixed: 5 } }]);
+  assert.deepEqual(p, { id: 'a', name: 'Amy', gender: '', dob: '', grades: { singles: 'D', doubles: '', mixed: '' } });
 });
 
 test('sanitizeProfiles ignores non-arrays and junk entries', () => {
@@ -20,7 +20,7 @@ test('sanitizeProfiles ignores non-arrays and junk entries', () => {
 
 test('profiles survive a save and load', () => {
   const storage = memoryStorage();
-  const amy = { ...newProfile(1), name: 'Amy', dob: '2014-06-06', grades: { singles: 'H', doubles: 'G', mixed: '' } };
+  const amy = { ...newProfile(1), name: 'Amy', gender: 'F', dob: '2014-06-06', grades: { singles: 'H', doubles: 'G', mixed: '' } };
   assert.equal(saveProfiles([amy], storage), true);
   assert.deepEqual(loadProfiles(storage), [amy]);
 });

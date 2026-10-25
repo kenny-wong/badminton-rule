@@ -428,7 +428,7 @@ function profileActions(profile) {
     return [
       h('span', { class: 'link-tag' }, t('players.fromLink')),
       h('button', { type: 'button', class: 'link-button', onclick: () => {
-        profiles.push({ ...newProfile(profile.name || t('players.defaultName', { n: profiles.length + 1 })), dob: profile.dob, grades: { ...profile.grades } });
+        profiles.push({ ...newProfile(profile.name || t('players.defaultName', { n: profiles.length + 1 })), gender: profile.gender ?? '', dob: profile.dob, grades: { ...profile.grades } });
         linkedPlayer = null;
         persistProfiles();
         history.replaceState(null, '', '#/check');
@@ -464,6 +464,10 @@ function profileRow(profile) {
     h('td', { class: 'f-name', 'data-label': t('players.name') }, h('input', { type: 'text', value: profile.name, maxlength: 60, 'aria-label': t('players.name'),
       placeholder: t('players.name'),
       oninput: (e) => { profile.name = e.target.value; update(); } })),
+    h('td', { class: 'f-gender', 'data-label': t('players.gender') },
+      h('select', { 'aria-label': label(t('players.gender')), onchange: (e) => { profile.gender = e.target.value; update(); } },
+        [['', t('players.genderUnset')], ['M', t('players.male')], ['F', t('players.female')]]
+          .map(([value, text]) => h('option', { value, selected: (profile.gender ?? '') === value }, text)))),
     h('td', { class: 'f-dob', 'data-label': t('check.dob') }, h('input', { type: 'date', value: profile.dob, min: '1920-01-01', max: `${SEASON}-12-31`, 'aria-label': label(t('check.dob')),
       oninput: (e) => { profile.dob = e.target.value; update(); } })),
     DISCIPLINES.map((d) => h('td', { 'data-label': t(`disc.${d}`) },
@@ -484,19 +488,53 @@ function miniEvents(result) {
     })));
 }
 
+// The comparison shows at most three players, so its columns fit a phone without
+// scrolling sideways. With more, the reader picks which three: a shared link's
+// player comes first, then saved players in order, and tapping another name swaps
+// it in for the one picked longest ago.
+const MAX_COMPARED = 3;
+let comparedIds = [];
+
+function shownPlayers(ready) {
+  const ids = new Set(ready.map((p) => p.id));
+  comparedIds = comparedIds.filter((id) => ids.has(id));
+  const order = [...ready.filter((p) => p === linkedPlayer), ...ready.filter((p) => p !== linkedPlayer)];
+  for (const p of order) {
+    if (comparedIds.length >= MAX_COMPARED) break;
+    if (!comparedIds.includes(p.id)) comparedIds.push(p.id);
+  }
+  return ready.filter((p) => comparedIds.includes(p.id));
+}
+
+function comparePicker(ready) {
+  if (ready.length <= MAX_COMPARED) return null;
+  return h('div', { class: 'compare-pick' },
+    h('p', { class: 'muted' }, t('players.compareLimit', { n: MAX_COMPARED })),
+    h('div', { class: 'compare-pick-chips' }, ready.map((p) => h('button', {
+      type: 'button', class: 'chip-button', 'aria-pressed': String(comparedIds.includes(p.id)),
+      onclick: () => {
+        if (comparedIds.includes(p.id)) return;
+        comparedIds = [...comparedIds.slice(1), p.id];
+        renderPlayerComparison();
+      },
+    }, profileName(p)))));
+}
+
 function renderPlayerComparison() {
   const box = document.getElementById('player-compare');
   if (!box) return;
-  const ready = comparedPlayers();
-  if (!ready.length) {
+  const all = comparedPlayers();
+  if (!all.length) {
     fill(box, h('p', { class: 'empty' }, t(profiles.length || linkedPlayer ? 'players.addDob' : 'players.addFirst')));
     return;
   }
+  const ready = shownPlayers(all);
   const results = new Map(ready.map((p) => [p.id, new Map(checkEligibility(p).map((r) => [r.tier, r]))]));
   const enterable = (p) => [...results.get(p.id).values()].filter((r) => r.status === 'yes' || r.status === 'partial').length;
   const short = Object.fromEntries(DISCIPLINES.map((d) => [d[0], t(`discShort.${d}`)]));
 
   fill(box,
+    comparePicker(all),
     h('div', { class: 'table-scroll compare-scroll' },
       h('table', { class: 'data-table player-compare' },
         h('thead', {}, h('tr', {},
@@ -504,7 +542,7 @@ function renderPlayerComparison() {
           ready.map((p) => h('th', { scope: 'col', class: p === linkedPlayer ? 'linked-col' : null },
             h('span', { class: 'player-name' }, profileName(p)),
             h('span', { class: 'player-line' }, playerLine(p)),
-            h('span', { class: 'player-line' }, t('players.canEnter', { n: enterable(p) })))))),
+            h('span', { class: 'player-line can-enter' }, t('players.canEnter', { n: enterable(p) })))))),
         h('tbody', {}, data.circuits.map((c) => {
           const tiers = data.tiers.filter((t) => t.circuit === c.id);
           // Tiers with no age or grade limits (Masters, Para, Other) give every
@@ -560,11 +598,11 @@ function drawCheck() {
     h('div', { class: 'table-scroll' },
       h('table', { class: 'data-table players-edit' },
         h('thead', {}, h('tr', {},
-          h('th', { scope: 'col' }, t('players.name')), h('th', { scope: 'col' }, t('check.dob')),
+          h('th', { scope: 'col' }, t('players.name')), h('th', { scope: 'col' }, t('players.gender')), h('th', { scope: 'col' }, t('check.dob')),
           DISCIPLINES.map((d) => h('th', { scope: 'col' }, t(`disc.${d}`))),
           h('th', { scope: 'col' }, h('span', { class: 'visually-hidden' }, t('players.actions'))))),
         h('tbody', {}, rows.length ? rows.map(profileRow)
-          : h('tr', {}, h('td', { colspan: 6, class: 'muted' }, t('players.none')))))),
+          : h('tr', {}, h('td', { colspan: 7, class: 'muted' }, t('players.none')))))),
     h('button', { type: 'button', class: 'button', onclick: () => {
       profiles.push(newProfile(t('players.defaultName', { n: profiles.length + 1 })));
       persistProfiles();
@@ -590,9 +628,12 @@ const GROUP_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 // The calculator's state. `example` names the worked example on screen, so that
 // switching format can swap in that example's version for the new format; any
-// edit to the scores clears it. Each entry holds one name (singles) or two
+// edit to the scores clears it. The page opens on an empty group of four. Each entry holds one name (singles) or two
 // (doubles); `picked` is a saved player chosen by tap, waiting for a slot.
 const calc = {
+  example: null,
+  size: 4,
+  scores: {},
   format: 'bestOf3',
   event: 'singles',
   entries: GROUP_LETTERS.map(() => ['', '']),
@@ -615,6 +656,21 @@ function isOwnEntry(i) {
   return calc.entries[i].slice(0, slotsPerEntry()).some((n) => own.has(n.trim()));
 }
 
+/** A saved player's gender ('M', 'F' or ''), looked up by name. */
+function genderOf(name) {
+  const key = name.trim();
+  return (key && profiles.find((p) => p.name.trim() === key)?.gender) || '';
+}
+
+const genderClass = (name) => ({ M: 'g-m', F: 'g-f' })[genderOf(name)] ?? '';
+
+/** An entry's name for display, each saved player coloured by gender: "Amy / Ben". */
+function entryLabel(i) {
+  const names = calc.entries[i].slice(0, slotsPerEntry()).map((n) => n.trim()).filter(Boolean);
+  if (!names.length) return GROUP_LETTERS[i];
+  return names.map((n, k) => [k ? ' / ' : null, genderClass(n) ? h('span', { class: genderClass(n) }, n) : n]);
+}
+
 /** Loads an example's scores; names already placed in the group stay put. */
 function loadExample(id) {
   calc.example = id;
@@ -622,8 +678,6 @@ function loadExample(id) {
   calc.withdrew = GROUP_LETTERS.map(() => false);
   calc.scores = exampleScores(id, calc.format, calc.gamePoints); // in the chosen points per game
 }
-
-loadExample('circle'); // open on a worked example rather than an empty form
 
 function signed(n) {
   if (n > 0) return `+${n}`;
@@ -729,17 +783,19 @@ function playerPalette() {
   return h('div', { class: 'palette' },
     h('p', { class: 'palette-title' }, t('groups.savedPlayers')),
     h('div', { class: 'palette-chips' }, saved.map((name) => h('button', {
-      type: 'button', class: `player-chip${placed.has(name) ? ' placed' : ''}`, 'aria-pressed': String(calc.picked === name),
+      type: 'button', class: ['player-chip', genderClass(name), placed.has(name) ? 'placed' : ''].filter(Boolean).join(' '), 'aria-pressed': String(calc.picked === name),
       onpointerdown: (e) => startDrag(e, name),
       onclick: (e) => { if (e.detail === 0) pickPlayer(name); }, // keyboard: Enter / Space
     }, name))),
+    profiles.some((p) => p.gender) ? h('p', { class: 'muted gender-key' },
+      h('span', { class: 'g-m' }, t('players.male')), ' · ', h('span', { class: 'g-f' }, t('players.female'))) : null,
     h('p', { class: 'muted palette-hint', 'aria-live': 'polite' }, calc.picked ? t('groups.picked', { name: calc.picked }) : t('groups.dragHint')));
 }
 
 function slotInput(i, k) {
   const letter = GROUP_LETTERS[i];
   return h('input', {
-    type: 'text', class: `slot-input${calc.picked ? ' awaiting' : ''}`, 'data-slot': `${i}-${k}`,
+    type: 'text', class: ['slot-input', genderClass(calc.entries[i][k]), calc.picked ? 'awaiting' : ''].filter(Boolean).join(' '), 'data-slot': `${i}-${k}`,
     value: calc.entries[i][k], maxlength: 30, placeholder: t('groups.slotEmpty'),
     'aria-label': `${t('players.name')} ${letter}${slotsPerEntry() > 1 ? ` (${k + 1})` : ''}`,
     onclick: () => { if (calc.picked) placePlayer(calc.picked, `${i}-${k}`); },
@@ -876,7 +932,7 @@ function drawGroupInputs() {
             h('th', { scope: 'col' }, ''))),
           h('tbody', {}, pairings(calc.size).map(([i, j]) => h('tr', { class: isOwnEntry(i) || isOwnEntry(j) ? 'own' : null },
             h('th', { scope: 'row', class: 'pair', 'data-pair': `${i}-${j}` },
-              h('span', { class: 'side side-a' }, players[i].name), ' – ', h('span', { class: 'side side-b' }, players[j].name)),
+              h('span', { class: 'side side-a' }, entryLabel(i)), ' – ', h('span', { class: 'side side-b' }, entryLabel(j))),
             Array.from({ length: gameCount }, (_, g) => h('td', { class: 'game-cell', 'data-label': gameCount > 1 ? t('groups.game', { n: g + 1 }) : null },
               scoreInput(i, j, g, 0), h('span', { class: 'dash', 'aria-hidden': 'true' }, '–'), scoreInput(i, j, g, 1))),
             h('td', { class: 'row-clear-cell' }, clearRowButton(i, j))))))))));
@@ -1086,11 +1142,11 @@ function crossTable(result) {
     h('div', { class: 'table-scroll cross-scroll' }, h('table', { class: 'data-table cross' },
       h('thead', {}, h('tr', {},
         h('th', { scope: 'col', class: 'corner' }, ''),
-        players.map((p) => h('th', { scope: 'col' }, p.name)),
+        players.map((_, c) => h('th', { scope: 'col' }, entryLabel(c))),
         h('th', { scope: 'col', class: 'num group-start' }, `${t('groups.colWon')}–${t('groups.colLost')}`),
         h('th', { scope: 'col', class: 'num' }, t('groups.colPos')))),
       h('tbody', {}, players.map((p, r) => h('tr', { class: [p.withdrew ? 'withdrawn' : '', isOwnEntry(r) ? 'own' : ''].join(' ').trim() || null },
-        h('th', { scope: 'row', class: 'player' }, p.name),
+        h('th', { scope: 'row', class: 'player' }, entryLabel(r)),
         players.map((_, c) => cell(r, c)),
         h('td', { class: 'num group-start' }, `${byId[p.id].won}–${byId[p.id].lost}`),
         h('td', { class: 'num pos' }, byId[p.id].position)))))),
@@ -1124,7 +1180,7 @@ function drawGroupResult() {
           h('th', { scope: 'col', class: 'num' }, t('groups.colDiff')))),
       h('tbody', {}, result.standings.map((s) => h('tr', { class: [s.by === 'withdrew' ? 'withdrawn' : '', isOwnEntry(GROUP_LETTERS.indexOf(s.id)) ? 'own' : ''].join(' ').trim() || null },
         h('td', { class: 'pos' }, s.position),
-        h('th', { scope: 'row', class: 'player' }, s.name),
+        h('th', { scope: 'row', class: 'player' }, entryLabel(GROUP_LETTERS.indexOf(s.id))),
         h('td', { class: 'num group-start' }, s.won), h('td', { class: 'num' }, s.lost),
         bestOf3 ? [h('td', { class: 'num group-start' }, s.gamesWon), h('td', { class: 'num' }, s.gamesLost),
           h('td', { class: 'num diff' }, signed(s.gamesWon - s.gamesLost))] : null,

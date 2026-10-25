@@ -15,7 +15,7 @@ Available in English, 繁體中文, 日本語 and Français.
 | **Grades** | See at a glance which grades (A–K) can enter each tier, split by age group and birth year. Pick a grade to list every tier it can enter. |
 | **Tiers** | Read every rule for one tier: sanction fee, match format, rest periods, grade restrictions, seeding, coaching and so on. |
 | **Compare** | Compare one rule area across all tiers, with tiers that share the same rule grouped together. |
-| **Can I enter?** | Save players (date of birth plus singles, doubles and mixed grades) and see, side by side, which tiers and age groups each can enter, and why. You can share a player with a link. |
+| **My players** | Save players (gender, date of birth plus singles, doubles and mixed grades) and see, side by side, which tiers and age groups each can enter, and why. You can share a player with a link. |
 | **Groups** | Learn how a round-robin group is ranked and how ties are broken. Then work out a group yourself: drag in saved players (singles or doubles), enter scores game by game, and get the standings, a results grid, and an analysis of what each player needs, down to "C must score at least 4 points". |
 | **Notes** | Read the general notes from the matrix and how this guide was put together. |
 
@@ -76,7 +76,7 @@ tests/                node:test suites for all of the above
 
 - **Rule text** lives in `site/data/tc-2026.json`. Each rule lists the tiers and rule areas it covers, so a merged cell in the PDF is one entry. The tests check that every tier has exactly one rule for every area.
 - **If you change any English rule text, update all three translation files.** The tests fail if a translation is missing or left over. They also fail if a UI string or `{placeholder}` doesn't match `locales/en.js`.
-- **Entry rules** (grade bars, minimum grades, birth years) are tables in `site/eligibility.js`. The Grades chart and the Can I enter? checker both read them, so the two can't disagree.
+- **Entry rules** (grade bars, minimum grades, birth years) are tables in `site/eligibility.js`. The Grades chart and the My players checker both read them, so the two can't disagree.
 - **Scoring per tier** (best of three or one game; 21, 15 or 11 points; setting) is `SCORING_PRESETS` in `site/groups.js`, taken from the matrix's Matches column.
 - `app.js` has no unit tests, so after changing it, load every page and check that none is stuck on "Loading the rules…" or shows "Couldn’t load the rules".
 

@@ -11,6 +11,8 @@
   --focus: #f0b429;
   --mark: #ffe58a;
   --own: #fff4cc;
+  --male: #1f5bc4;     /* saved players' names in the group calculator */
+  --female: #c2263f;
   --table-head: #e6efe8;
   --shuttle-cork: #f0b429;
   --net-tape: #f2f7f3;
@@ -61,6 +63,8 @@
     --head-muted: #9dbdad;
     --mark: #6b5a12;
     --own: #3a3214;
+    --male: #8ab4ff;
+    --female: #ff8fa3;
     --table-head: #1b2a22;
     --row-hover: #1d2320;
 
@@ -92,6 +96,8 @@
   --head-muted: #9dbdad;
   --mark: #6b5a12;
   --own: #3a3214;
+  --male: #8ab4ff;
+  --female: #ff8fa3;
   --table-head: #1b2a22;
   --row-hover: #1d2320;
 
@@ -411,15 +417,21 @@ input[type="text"]:focus-visible { outline: 3px solid var(--focus); outline-offs
 .players-edit .row-actions { width: 1%; white-space: nowrap; text-align: right; }
 
 .compare-title { margin-top: 32px; }
-/* Its own scroll box (both axes) so the header row and tier column stay pinned. */
-.compare-scroll { max-height: 80vh; }
-.player-compare thead th { text-transform: none; letter-spacing: 0; color: var(--text); font-size: var(--fs-md); min-width: 190px; }
-.player-compare thead th.corner { position: sticky; left: 0; z-index: 3; min-width: 140px; color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.05em; }
+/* No scroll box: the table fits the page width and scrolls with the page, and
+   the header row of player names sticks to the top of the window. overflow: clip
+   keeps the rounded corners without making a scroll container, which would stop
+   the header sticking to the window. */
+.compare-scroll { overflow: clip; }
+.player-compare { table-layout: fixed; }
+.compare-pick { margin: 0 0 12px; }
+.compare-pick p { margin: 0 0 6px; font-size: var(--fs-sm); }
+.compare-pick-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.player-compare thead th { text-transform: none; letter-spacing: 0; color: var(--text); font-size: var(--fs-md); overflow-wrap: break-word; }
+.player-compare thead th.corner { z-index: 3; width: 170px; color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.05em; }
 .player-name { font-weight: 700; color: var(--text); }
 .player-line { display: block; font-weight: 500; font-size: var(--fs-xs); color: var(--muted); }
 .player-compare .tier-cell {
-  position: sticky; left: 0; z-index: 1; background: var(--surface);
-  border-left: 5px solid var(--strong); white-space: nowrap;
+  background: var(--surface); border-left: 5px solid var(--strong);
 }
 .player-compare .group-row th {
   background: var(--tint); color: var(--text); font-size: var(--fs-xs); text-transform: uppercase;
@@ -600,6 +612,11 @@ label.check { display: inline-flex; align-items: center; gap: 4px; font-size: va
 }
 .player-chip:active { cursor: grabbing; }
 .player-chip.placed { opacity: 0.5; }
+.g-m { color: var(--male); font-weight: 600; }
+.g-f { color: var(--female); font-weight: 600; }
+.player-chip.g-m { border-color: var(--male); }
+.player-chip.g-f { border-color: var(--female); }
+.gender-key { margin: 6px 0 0; font-size: var(--fs-sm); }
 .player-chip[aria-pressed="true"] { outline: 3px solid var(--focus); outline-offset: 1px; opacity: 1; }
 .player-chip:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .palette-hint { margin: 6px 0 0; font-size: var(--fs-sm); }
@@ -745,7 +762,8 @@ input[type="date"], select {
   .players-edit, .players-edit tbody, .players-edit tr, .players-edit td { display: block; width: auto; }
   .players-edit tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 8px; padding: 10px; border-bottom: 1px solid var(--border); }
   .players-edit td { border: 0; padding: 0; min-width: 0; }
-  .players-edit .f-name, .players-edit .f-dob { grid-column: span 3; }
+  .players-edit .f-name { grid-column: span 2; }
+  .players-edit .f-dob { grid-column: span 3; }
   .players-edit td[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-xs); color: var(--muted); margin-bottom: 2px; }
   .players-edit input, .players-edit select { width: 100%; min-width: 0; }
   .players-edit .row-actions { grid-column: 1 / -1; text-align: right; width: auto; }
@@ -753,31 +771,23 @@ input[type="date"], select {
 
 @media (min-width: 600px) and (max-width: 899px) {
   /* Foldables: name, birthday and the three grades fit on one line per card. */
-  .players-edit tr { grid-template-columns: 1.6fr 1.3fr 1fr 1fr 1fr; }
+  .players-edit tr { grid-template-columns: 1.6fr 1fr 1.3fr 1fr 1fr 1fr; }
   .players-edit .f-name, .players-edit .f-dob { grid-column: auto; }
 }
 
-@media (min-width: 900px) {
-  /* Wide screens: fixed layout, so the player columns share the width equally
-     rather than each sizing to its longest note. */
-  .player-compare { table-layout: fixed; }
-  .player-compare thead th.corner { width: 170px; }
-  .player-compare thead th { min-width: 0; }
-}
-
 @media (min-width: 600px) and (max-width: 899px) {
-  /* Tablets and foldables: a narrower tier column, and player columns that
-     share the rest, so three players fit at 712px. */
-  .player-compare thead th { min-width: 0; }
-  .player-compare thead th.corner, .player-compare .tier-cell { min-width: 0; width: 120px; white-space: normal; }
+  /* Tablets and foldables: a narrower tier column. */
+  .player-compare thead th.corner { width: 120px; }
 }
 
 @media (max-width: 599px) {
-  /* Phones: a slim tier column, so more of each player column shows. */
-  .player-compare thead th { min-width: 160px; }
-  .player-compare thead th.corner, .player-compare .tier-cell {
-    min-width: 0; width: 96px; white-space: normal; padding-inline: 8px; font-size: var(--fs-sm);
-  }
+  /* Phones: a slim tier column and tighter cells, so the player columns fit. */
+  .player-compare thead th.corner { width: 96px; }
+  .player-compare th, .player-compare td { padding-inline: 8px; }
+  .player-compare thead th.corner, .player-compare .tier-cell { font-size: var(--fs-sm); }
+  /* The pinned header stays short: name and birth year only. */
+  .player-compare .can-enter { display: none; }
+  .player-compare .status { display: inline-block; white-space: normal; padding-inline: 8px; border-radius: 10px; }
   .player-compare thead th.corner { font-size: var(--fs-2xs); }
   .player-compare .tier-cell { border-left-width: 4px; }
 }

@@ -62,7 +62,8 @@ test('groupKind names singles by the players’ genders', () => {
   assert.equal(groupKind(state('singles', ['Amy', 'Bea', 'Cat']), genderOf), 'ws');
   assert.equal(groupKind(state('singles', ['Amy', 'Dan', 'Cat']), genderOf), 'singles');
   assert.equal(groupKind(state('singles', ['Amy', 'Bea', 'Gus']), genderOf), 'singles');
-  assert.equal(groupKind(state('singles', ['Amy', 'Bea', '']), genderOf), 'singles');
+  assert.equal(groupKind(state('singles', ['Amy', 'Bea', '']), genderOf), 'ws'); // an empty slot doesn't count
+  assert.equal(groupKind(state('singles', ['', '', '']), genderOf), 'singles');
 });
 
 test('groupKind names doubles by each pair’s genders', () => {
@@ -70,7 +71,15 @@ test('groupKind names doubles by each pair’s genders', () => {
   assert.equal(groupKind(state('doubles', [['Amy', 'Bea'], ['Cat', 'Amy'], ['Bea', 'Cat']]), genderOf), 'wd');
   assert.equal(groupKind(state('doubles', [['Amy', 'Dan'], ['Eli', 'Bea'], ['Cat', 'Fin']]), genderOf), 'xd');
   assert.equal(groupKind(state('doubles', [['Amy', 'Dan'], ['Eli', 'Fin'], ['Cat', 'Fin']]), genderOf), 'doubles');
-  assert.equal(groupKind(state('doubles', [['Amy', ''], ['Eli', 'Bea'], ['Cat', 'Fin']]), genderOf), 'doubles');
+  assert.equal(groupKind(state('doubles', [['Amy', 'Gus'], ['Eli', 'Bea'], ['Cat', 'Fin']]), genderOf), 'doubles');
+});
+
+test('groupKind ignores slots not filled in yet', () => {
+  assert.equal(groupKind(state('doubles', [['Amy', 'Dan'], ['', ''], ['', ''], ['', '']]), genderOf), 'xd');
+  assert.equal(groupKind(state('doubles', [['Amy', ''], ['Eli', 'Bea'], ['Cat', 'Fin']]), genderOf), 'xd');
+  assert.equal(groupKind(state('doubles', [['Dan', ''], ['Eli', 'Fin'], ['', '']]), genderOf), 'md');
+  assert.equal(groupKind(state('doubles', [['Amy', ''], ['', ''], ['', '']]), genderOf), 'doubles'); // women's or mixed: can't tell yet
+  assert.equal(groupKind(state('doubles', [['', ''], ['', ''], ['', '']]), genderOf), 'doubles');
 });
 
 test('groupNames letters groups that share a kind, and keeps aliases', () => {

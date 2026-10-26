@@ -83,23 +83,29 @@ export function saveGroups(store, storage) {
 /**
  * The event a group is, from its players' genders: 'ms' / 'ws' (men's or women's
  * singles), 'md' / 'wd' / 'xd' (men's, women's or mixed doubles), or just
- * 'singles' / 'doubles' when any player's gender isn't known or they differ.
- * `genderOf(name)` gives 'M', 'F' or ''.
+ * 'singles' / 'doubles' when a player's gender isn't known or they don't agree.
+ * Slots not filled in yet don't count, so one mixed pair in a group of four
+ * already makes it mixed doubles. `genderOf(name)` gives 'M', 'F' or ''.
  */
 export function groupKind(state, genderOf) {
   const doubles = state.event === 'doubles';
-  const entries = state.entries.slice(0, state.size).map((e) => e.slice(0, doubles ? 2 : 1).map((n) => genderOf(n.trim())));
+  const genders = state.entries.slice(0, state.size)
+    .map((e) => e.slice(0, doubles ? 2 : 1).map((n) => n.trim()).filter(Boolean).map(genderOf))
+    .filter((g) => g.length);
+  if (!genders.length || genders.flat().includes('')) return doubles ? 'doubles' : 'singles';
   if (!doubles) {
-    if (entries.every(([g]) => g === 'M')) return 'ms';
-    if (entries.every(([g]) => g === 'F')) return 'ws';
+    if (genders.every(([g]) => g === 'M')) return 'ms';
+    if (genders.every(([g]) => g === 'F')) return 'ws';
     return 'singles';
   }
-  const pairs = entries.map(([a, b]) => {
-    if (!a || !b) return '';
-    if (a !== b) return 'xd';
-    return a === 'M' ? 'md' : 'wd';
-  });
-  return pairs[0] && pairs.every((k) => k === pairs[0]) ? pairs[0] : 'doubles';
+  // Each pair narrows the possible events; a pair with one player so far leaves two.
+  let kinds = ['md', 'wd', 'xd'];
+  for (const [a, b] of genders) {
+    let fits = [a === 'M' ? 'md' : 'wd', 'xd'];
+    if (b) fits = [a !== b ? 'xd' : fits[0]];
+    kinds = kinds.filter((k) => fits.includes(k));
+  }
+  return kinds.length === 1 ? kinds[0] : 'doubles';
 }
 
 /**

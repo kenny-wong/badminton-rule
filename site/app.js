@@ -2,6 +2,7 @@ import { DISCIPLINES, GRADES, JUNIOR_AGE_GROUPS, SEASON, checkEligibility, grade
 import { LOCALES, currentLocale, initialLocale, setLocale, t, tParts, td } from './i18n.js';
 import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, qualificationDetail, rankGroup } from './groups.js';
 import { loadProfiles, newProfile, saveProfiles } from './profiles.js';
+import { MAX_GROUPS, groupNames, loadGroups, newGroup, sanitizeState, saveGroups } from './saved-groups.js';
 
 const view = document.getElementById('view');
 const searchInput = document.getElementById('search');
@@ -688,6 +689,125 @@ function loadExample(id) {
   calc.scores = exampleScores(id, calc.format, calc.gamePoints); // in the chosen points per game
 }
 
+// Saved groups (up to MAX_GROUPS). The open one is saved again after every
+// change, so its names and scores are still there after a reload; the page
+// reopens it. Examples and "New group" start an unsaved group instead.
+let savedGroups = loadGroups();
+
+/** Puts a saved group's names, scores and settings into the calculator. */
+function applyGroupState(state) {
+  Object.assign(calc, sanitizeState(state), { example: null, picked: null, outlook: { entry: null, places: 1 } });
+}
+
+function activeGroup() {
+  return savedGroups.groups.find((g) => g.id === savedGroups.active) ?? null;
+}
+
+if (activeGroup()) applyGroupState(activeGroup().state);
+
+function persistGroups() {
+  const saved = saveGroups(savedGroups);
+  const warning = document.getElementById('groups-warning');
+  if (warning) warning.hidden = saved;
+}
+
+/** "Men's singles", "Singles B", or the reader's own name for each saved group. */
+function groupLabels(groups = savedGroups.groups) {
+  return groupNames(groups, genderOf).map((n) => n.alias ?? [t(`kind.${n.kind}`), n.letter].filter(Boolean).join(' '));
+}
+
+/** The name a group would have without its alias, shown as the rename box's placeholder. */
+function defaultGroupName(group) {
+  const groups = savedGroups.groups.map((g) => (g === group ? { ...g, alias: '' } : g));
+  return groupLabels(groups)[groups.findIndex((g) => g.id === group.id)];
+}
+
+function autosaveGroup() {
+  const group = activeGroup();
+  if (!group) return;
+  group.state = sanitizeState(calc);
+  persistGroups();
+  drawSavedChips();
+}
+
+function hasUnsavedWork() {
+  return Object.keys(calc.scores).length > 0 || calc.entries.some((e) => e.some((n) => n.trim()));
+}
+
+function openSavedGroup(id) {
+  if (id === savedGroups.active) return;
+  if (!activeGroup() && hasUnsavedWork() && !confirm(t('groups.confirmSwitch'))) return;
+  applyGroupState(savedGroups.groups.find((g) => g.id === id).state);
+  savedGroups.active = id;
+  persistGroups();
+  renderGroups();
+}
+
+function saveCurrentGroup() {
+  if (savedGroups.groups.length >= MAX_GROUPS) return;
+  const group = newGroup(calc);
+  savedGroups.groups.push(group);
+  savedGroups.active = group.id;
+  calc.example = null;
+  persistGroups();
+  renderGroups();
+}
+
+/** Leaves the open group as saved and starts an empty, unsaved one with the same scoring. */
+function startNewGroup() {
+  savedGroups.active = null;
+  persistGroups();
+  Object.assign(calc, {
+    example: null, picked: null, size: 4, scores: {}, outlook: { entry: null, places: 1 },
+    entries: GROUP_LETTERS.map(() => ['', '']), withdrew: GROUP_LETTERS.map(() => false),
+  });
+  renderGroups();
+}
+
+/** Deletes the open group; what's on screen stays, unsaved, so it can be saved again. */
+function deleteActiveGroup() {
+  const group = activeGroup();
+  const name = groupLabels()[savedGroups.groups.indexOf(group)];
+  if (!confirm(t('groups.confirmDelete', { name }))) return;
+  savedGroups.groups = savedGroups.groups.filter((g) => g !== group);
+  savedGroups.active = null;
+  persistGroups();
+  renderGroups();
+}
+
+function drawSavedChips() {
+  const box = document.getElementById('saved-chips');
+  if (!box) return;
+  const labels = groupLabels();
+  fill(box, savedGroups.groups.map((g, i) => h('button', {
+    type: 'button', class: 'chip-button', 'aria-pressed': String(g.id === savedGroups.active), onclick: () => openSavedGroup(g.id),
+  }, labels[i])));
+  const alias = document.getElementById('group-alias');
+  if (alias && activeGroup()) alias.placeholder = defaultGroupName(activeGroup());
+}
+
+function savedGroupsPanel() {
+  const group = activeGroup();
+  const full = savedGroups.groups.length >= MAX_GROUPS;
+  let note = t('groups.savedNone', { n: MAX_GROUPS });
+  if (group) note = t('groups.autoSaved');
+  else if (full) note = t('groups.savedFull', { n: MAX_GROUPS });
+  return h('div', { class: 'saved-groups' },
+    h('p', { class: 'palette-title' }, t('groups.savedTitle')),
+    h('div', { id: 'saved-chips', class: 'palette-chips' }),
+    h('div', { class: 'calc-controls saved-actions' },
+      group
+        ? [
+          field(t('groups.groupName'), h('input', { type: 'text', id: 'group-alias', value: group.alias, maxlength: 40, placeholder: defaultGroupName(group),
+            oninput: (e) => { group.alias = e.target.value; persistGroups(); drawSavedChips(); } })),
+          h('button', { type: 'button', class: 'link-button', onclick: startNewGroup }, t('groups.newGroup')),
+          h('button', { type: 'button', class: 'link-button danger', onclick: deleteActiveGroup }, t('groups.deleteGroup')),
+        ]
+        : h('button', { type: 'button', class: 'button', disabled: full, onclick: saveCurrentGroup }, t('groups.saveGroup')),
+      h('span', { class: 'muted saved-note' }, note)),
+    h('p', { id: 'groups-warning', class: 'warning', hidden: true }, t('players.saveWarning')));
+}
+
 function signed(n) {
   if (n > 0) return `+${n}`;
   if (n < 0) return `−${Math.abs(n)}`;
@@ -1165,6 +1285,7 @@ function crossTable(result) {
 function drawGroupResult() {
   const box = document.getElementById('calc-result');
   if (!box) return;
+  autosaveGroup(); // every change to the calculator ends here
   const result = rankGroup(calcPlayers(), calcMatches(), calc.format, { rules: scoringRules() });
   const bestOf3 = calc.format === 'bestOf3';
   fill(box,
@@ -1281,7 +1402,7 @@ function renderGroups() {
     [3, 4, 5, 6].map((n) => h('option', { value: n, selected: calc.size === n }, n)));
   // Examples keep the chosen format: each has a best-of-three and a one-game version.
   const example = (id, key) => h('button', { type: 'button', class: 'chip-button', 'data-example': id, 'aria-pressed': String(calc.example === id),
-    onclick: () => { loadExample(id); renderGroups(); document.getElementById('calc')?.scrollIntoView({ block: 'start' }); } }, t(key));
+    onclick: () => { savedGroups.active = null; persistGroups(); loadExample(id); renderGroups(); document.getElementById('calc')?.scrollIntoView({ block: 'start' }); } }, t(key));
 
   // Two parts: 1. the rules, folded away by default (and kept as the reader left
   // them when the page redraws), and 2. the calculator, always open. The toggle
@@ -1312,6 +1433,7 @@ function renderGroups() {
     h('section', { class: 'groups-part calc', id: 'calc', 'aria-labelledby': 'calc-title' },
       h('div', { class: 'part-head' }, h('h3', { class: 'part-title', id: 'calc-title' }, `2. ${t('groups.calcTitle')}`)),
       h('p', { class: 'lede-small' }, t('groups.calcLede')),
+      savedGroupsPanel(),
       h('div', { class: 'calc-controls' },
         h('span', { class: 'muted' }, t('groups.examples')),
         example('two', 'groups.exTwo'), example('circle', 'groups.exCircle'),
@@ -1336,6 +1458,7 @@ function renderGroups() {
         h('li', {}, h('a', { href: 'https://images.gc.badmintonenglandservices.co.uk/53012730-1ee3-11f1-a060-b1b720430faa.pdf', rel: 'noopener' }, t('groups.source1'))),
         h('li', {}, h('a', { href: 'https://www.badminton.org.au/wp-content/uploads/2024/01/Section-5.1-General-Competition-Regulations-11-November-2023-V4.0-1.pdf', rel: 'noopener' }, t('groups.source2')))),
       h('p', { class: 'muted' }, t('groups.sourceNote'))));
+  drawSavedChips();
   drawGroupInputs();
   drawGroupResult();
 }

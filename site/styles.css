@@ -612,6 +612,15 @@ label.check { display: inline-flex; align-items: center; gap: 4px; font-size: va
 .calc-heading h4 { margin: 0; }
 .calc-heading .link-button { font-size: var(--fs-sm); padding: 2px 0; }
 .palette { margin: 4px 0 6px; }
+.saved-groups {
+  margin: 0 0 16px; padding: 12px 14px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius);
+}
+.saved-groups .palette-chips:empty { display: none; }
+.saved-actions { margin: 8px 0 0; }
+.saved-actions input { width: 14em; max-width: 100%; }
+.saved-note { font-size: var(--fs-sm); }
+.saved-groups .warning { margin: 8px 0 0; }
 .palette-title { margin: 0 0 6px; font-weight: 600; font-size: var(--fs-md); }
 .palette-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 /* touch-action: none lets a finger drag the chip instead of scrolling the page. */

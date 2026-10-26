@@ -789,9 +789,12 @@ function drawSavedChips() {
 function savedGroupsPanel() {
   const group = activeGroup();
   const full = savedGroups.groups.length >= MAX_GROUPS;
-  let note = t('groups.savedNone', { n: MAX_GROUPS });
-  if (group) note = t('groups.autoSaved');
-  else if (full) note = t('groups.savedFull', { n: MAX_GROUPS });
+  const fullNote = t('groups.savedFull', { n: MAX_GROUPS });
+  let note = full ? fullNote : t('groups.savedNone', { n: MAX_GROUPS });
+  if (group) {
+    note = t('groups.autoSaved');
+    if (full) note += `${note.endsWith('。') ? '' : ' '}${fullNote}`; // no space after a CJK full stop
+  }
   return h('div', { class: 'saved-groups' },
     h('p', { class: 'palette-title' }, t('groups.savedTitle'), ' ',
       h('span', { class: 'saved-count' }, `(${savedGroups.groups.length}/${MAX_GROUPS})`)), // slots used
@@ -801,7 +804,8 @@ function savedGroupsPanel() {
         ? [
           field(t('groups.groupName'), h('input', { type: 'text', id: 'group-alias', value: group.alias, maxlength: 40, placeholder: defaultGroupName(group),
             oninput: (e) => { group.alias = e.target.value; persistGroups(); drawSavedChips(); } })),
-          h('button', { type: 'button', class: 'link-button', onclick: startNewGroup }, t('groups.newGroup')),
+          // A new group couldn't be saved while every slot is used.
+          h('button', { type: 'button', class: 'link-button', disabled: full, onclick: startNewGroup }, t('groups.newGroup')),
           h('button', { type: 'button', class: 'link-button danger', onclick: deleteActiveGroup }, t('groups.deleteGroup')),
         ]
         : h('button', { type: 'button', class: 'button', disabled: full, onclick: saveCurrentGroup }, t('groups.saveGroup')),

@@ -412,6 +412,7 @@ main { padding-top: 28px; padding-bottom: 40px; min-height: 60vh; }
 }
 .button:hover { filter: brightness(1.08); }
 .link-button { font: inherit; background: none; border: 0; padding: 4px 6px; cursor: pointer; color: var(--accent); text-decoration: underline; }
+.button:disabled, .link-button:disabled { opacity: 0.4; cursor: not-allowed; }
 .link-button.danger { color: var(--no); }
 .button:focus-visible, .link-button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .warning { background: var(--partial-bg); color: var(--partial); padding: 8px 12px; border-radius: 8px; }

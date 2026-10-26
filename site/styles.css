@@ -11,8 +11,10 @@
   --focus: #f0b429;
   --mark: #ffe58a;
   --own: #fff4cc;
-  --male: #1f5bc4;     /* saved players' names in the group calculator */
+  --male: #1f5bc4;     /* saved players' names, shaded by gender */
   --female: #c2263f;
+  --male-bg: #dbe7fb;
+  --female-bg: #fbdde4;
   --table-head: #e6efe8;
   --shuttle-cork: #f0b429;
   --net-tape: #f2f7f3;
@@ -65,6 +67,8 @@
     --own: #3a3214;
     --male: #8ab4ff;
     --female: #ff8fa3;
+    --male-bg: #1c2b47;
+    --female-bg: #451e28;
     --table-head: #1b2a22;
     --row-hover: #1d2320;
 
@@ -98,6 +102,8 @@
   --own: #3a3214;
   --male: #8ab4ff;
   --female: #ff8fa3;
+  --male-bg: #1c2b47;
+  --female-bg: #451e28;
   --table-head: #1b2a22;
   --row-hover: #1d2320;
 
@@ -176,6 +182,10 @@ main:focus { outline: none; }
 .logo-cork { fill: var(--shuttle-cork); stroke: var(--shuttle-cork); }
 .brand:hover .logo { transform: rotate(-12deg) translateY(-3px); }
 .brand h1 { margin: 2px 0 6px; font-size: clamp(1.7rem, 4vw, 2.4rem); line-height: 1.1; letter-spacing: -0.02em; }
+.brand h1 .version {
+  font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.02em; color: var(--head-muted);
+  vertical-align: middle; white-space: nowrap;
+}
 .eyebrow { margin: 0; font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
 .masthead .eyebrow { color: var(--head-muted); }
 .lede { margin: 0; color: var(--head-muted); max-width: 56ch; }
@@ -612,10 +622,13 @@ label.check { display: inline-flex; align-items: center; gap: 4px; font-size: va
 }
 .player-chip:active { cursor: grabbing; }
 .player-chip.placed { opacity: 0.5; }
-.g-m { color: var(--male); font-weight: 600; }
-.g-f { color: var(--female); font-weight: 600; }
-.player-chip.g-m { border-color: var(--male); }
-.player-chip.g-f { border-color: var(--female); }
+/* Gender shading: a tinted background with an outline in the stronger colour,
+   so a red-shaded name still reads differently from a lost match's red. */
+span.g-m, span.g-f { padding: 0 6px; border-radius: 4px; font-weight: 600; color: var(--text); }
+span.g-m { background: var(--male-bg); box-shadow: inset 0 0 0 1px var(--male); }
+span.g-f { background: var(--female-bg); box-shadow: inset 0 0 0 1px var(--female); }
+.player-chip.g-m, input.g-m { background: var(--male-bg); border-color: var(--male); }
+.player-chip.g-f, input.g-f { background: var(--female-bg); border-color: var(--female); }
 .gender-key { margin: 6px 0 0; font-size: var(--fs-sm); }
 .player-chip[aria-pressed="true"] { outline: 3px solid var(--focus); outline-offset: 1px; opacity: 1; }
 .player-chip:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }

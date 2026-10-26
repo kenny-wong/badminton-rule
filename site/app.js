@@ -382,6 +382,9 @@ function statusBadge(status, label = t(`status.${status}`)) {
 // It joins the comparison but isn't saved unless the reader asks.
 let linkedPlayer = null;
 
+// Names are shaded by gender: blue for male, red for female.
+const GENDER_CLASS = { M: 'g-m', F: 'g-f' };
+
 function shareHash(profile) {
   return `#/check/${profile.dob}/${DISCIPLINES.map((d) => profile.grades[d]).join('/')}`;
 }
@@ -461,11 +464,17 @@ function profileRow(profile) {
   };
   const label = (field) => t('players.fieldFor', { field, name: profile.name || t('players.thisPlayer') });
   return h('tr', { class: linked ? 'linked-row' : null },
-    h('td', { class: 'f-name', 'data-label': t('players.name') }, h('input', { type: 'text', value: profile.name, maxlength: 60, 'aria-label': t('players.name'),
+    h('td', { class: 'f-name', 'data-label': t('players.name') }, h('input', { type: 'text', class: GENDER_CLASS[profile.gender] ?? null, value: profile.name, maxlength: 60, 'aria-label': t('players.name'),
       placeholder: t('players.name'),
       oninput: (e) => { profile.name = e.target.value; update(); } })),
     h('td', { class: 'f-gender', 'data-label': t('players.gender') },
-      h('select', { 'aria-label': label(t('players.gender')), onchange: (e) => { profile.gender = e.target.value; update(); } },
+      h('select', { 'aria-label': label(t('players.gender')), onchange: (e) => {
+        profile.gender = e.target.value;
+        const name = e.target.closest('tr').querySelector('.f-name input');
+        name.classList.remove('g-m', 'g-f');
+        if (GENDER_CLASS[profile.gender]) name.classList.add(GENDER_CLASS[profile.gender]);
+        update();
+      } },
         [['', t('players.genderUnset')], ['M', t('players.male')], ['F', t('players.female')]]
           .map(([value, text]) => h('option', { value, selected: (profile.gender ?? '') === value }, text)))),
     h('td', { class: 'f-dob', 'data-label': t('check.dob') }, h('input', { type: 'date', value: profile.dob, min: '1920-01-01', max: `${SEASON}-12-31`, 'aria-label': label(t('check.dob')),
@@ -540,7 +549,7 @@ function renderPlayerComparison() {
         h('thead', {}, h('tr', {},
           h('th', { scope: 'col', class: 'corner' }, t('tier.label')),
           ready.map((p) => h('th', { scope: 'col', class: p === linkedPlayer ? 'linked-col' : null },
-            h('span', { class: 'player-name' }, profileName(p)),
+            h('span', { class: ['player-name', GENDER_CLASS[p.gender]].filter(Boolean).join(' ') }, profileName(p)),
             h('span', { class: 'player-line' }, playerLine(p)),
             h('span', { class: 'player-line can-enter' }, t('players.canEnter', { n: enterable(p) })))))),
         h('tbody', {}, data.circuits.map((c) => {
@@ -662,7 +671,7 @@ function genderOf(name) {
   return (key && profiles.find((p) => p.name.trim() === key)?.gender) || '';
 }
 
-const genderClass = (name) => ({ M: 'g-m', F: 'g-f' })[genderOf(name)] ?? '';
+const genderClass = (name) => GENDER_CLASS[genderOf(name)] ?? '';
 
 /** An entry's name for display, each saved player coloured by gender: "Amy / Ben". */
 function entryLabel(i) {

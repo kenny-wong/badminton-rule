@@ -620,6 +620,7 @@ label.check { display: inline-flex; align-items: center; gap: 4px; font-size: va
 .saved-actions { margin: 8px 0 0; }
 .saved-actions input { width: 14em; max-width: 100%; }
 .saved-note { font-size: var(--fs-sm); }
+.saved-count { font-weight: 500; color: var(--muted); }
 .saved-groups .warning { margin: 8px 0 0; }
 .palette-title { margin: 0 0 6px; font-weight: 600; font-size: var(--fs-md); }
 .palette-chips { display: flex; flex-wrap: wrap; gap: 6px; }

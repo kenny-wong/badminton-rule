@@ -793,7 +793,8 @@ function savedGroupsPanel() {
   if (group) note = t('groups.autoSaved');
   else if (full) note = t('groups.savedFull', { n: MAX_GROUPS });
   return h('div', { class: 'saved-groups' },
-    h('p', { class: 'palette-title' }, t('groups.savedTitle')),
+    h('p', { class: 'palette-title' }, t('groups.savedTitle'), ' ',
+      h('span', { class: 'saved-count' }, `(${savedGroups.groups.length}/${MAX_GROUPS})`)), // slots used
     h('div', { id: 'saved-chips', class: 'palette-chips' }),
     h('div', { class: 'calc-controls saved-actions' },
       group

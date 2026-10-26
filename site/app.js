@@ -2,6 +2,7 @@ import { DISCIPLINES, GRADES, JUNIOR_AGE_GROUPS, SEASON, checkEligibility, grade
 import { LOCALES, currentLocale, initialLocale, setLocale, t, tParts, td } from './i18n.js';
 import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, qualificationDetail, rankGroup } from './groups.js';
 import { loadProfiles, newProfile, saveProfiles } from './profiles.js';
+import { renderLaws } from './laws.js';
 import { MAX_GROUPS, groupNames, loadGroups, newGroup, sanitizeState, saveGroups } from './saved-groups.js';
 
 const view = document.getElementById('view');
@@ -1528,6 +1529,7 @@ function route({ focus = true } = {}) {
   else if (section === 'check') renderCheck(arg ? [param, ...rest] : []);
   else if (section === 'notes') renderNotes();
   else if (section === 'groups') renderGroups();
+  else if (section === 'laws') renderLaws(view, { h, fill, setTitle });
   else if (section === 'search') {
     if (searchInput.value !== param) searchInput.value = param;
     renderSearch(param);

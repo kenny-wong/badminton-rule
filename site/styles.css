@@ -15,6 +15,9 @@
   --female: #c2263f;
   --male-bg: #dbe7fb;
   --female-bg: #fbdde4;
+  --court-bg: #2f7d5b;  /* court diagrams on the Laws page */
+  --court-line: #ffffff;
+  --court-hl: #f0b429;
   --table-head: #e6efe8;
   --shuttle-cork: #f0b429;
   --net-tape: #f2f7f3;
@@ -69,6 +72,9 @@
     --female: #ff8fa3;
     --male-bg: #1c2b47;
     --female-bg: #451e28;
+    --court-bg: #1f5a42;
+    --court-line: #e6ebe7;
+    --court-hl: #f0b429;
     --table-head: #1b2a22;
     --row-hover: #1d2320;
 
@@ -104,6 +110,9 @@
   --female: #ff8fa3;
   --male-bg: #1c2b47;
   --female-bg: #451e28;
+  --court-bg: #1f5a42;
+  --court-line: #e6ebe7;
+  --court-hl: #f0b429;
   --table-head: #1b2a22;
   --row-hover: #1d2320;
 
@@ -428,6 +437,68 @@ input[type="text"]:focus-visible { outline: 3px solid var(--focus); outline-offs
 .players-edit .row-actions { width: 1%; white-space: nowrap; text-align: right; }
 
 .compare-title { margin-top: 32px; }
+
+/* Laws page: text beside its diagram on wide screens, stacked on narrow ones. */
+.law-section { margin-top: 28px; }
+.law-section .sub-title { margin-top: 0; }
+.law-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 400px); gap: 16px 32px; align-items: start; }
+.law-figure {
+  margin: 0; padding: 12px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.law-figure figcaption { margin-top: 8px; font-size: var(--fs-sm); }
+.law-toggles { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.law-svg { display: block; width: 100%; height: auto; margin: 0 auto; font-family: inherit; }
+.service-svg { max-width: 300px; }
+.law-svg text { fill: var(--text); font-size: 18px; }
+.court-surface { fill: var(--court-bg); }
+.court-hl { fill: var(--court-hl); fill-opacity: 0.85; }
+.out-shade { fill: rgb(0 0 0 / 35%); }
+.out-line { stroke: var(--court-line); stroke-width: 3; stroke-opacity: 0.6; }
+.court-from { fill: var(--court-line); fill-opacity: 0.22; }
+.court-lines rect, .court-lines line { fill: none; stroke: var(--court-line); stroke-width: 3; }
+.court-net line { stroke: var(--text); stroke-width: 4; stroke-dasharray: 6 3; }
+.court-net circle { fill: var(--text); }
+.dimension line { stroke: var(--muted); stroke-width: 1.5; }
+.law-svg .dimension text { fill: var(--muted); font-size: 17px; }
+.marker circle { fill: var(--surface); stroke: var(--text); stroke-width: 2; }
+.law-svg .marker text { font-size: 15px; font-weight: 700; }
+.person circle { stroke: var(--surface); stroke-width: 3; }
+.person.server circle { fill: #1f5bc4; }  /* fixed, so the white letter reads in both themes */
+.person.receiver circle { fill: #c2263f; }
+.person.partner circle { fill: #5b6660; }
+.law-svg .person text { fill: #fff; font-weight: 700; font-size: 17px; }
+.serve-path { fill: none; stroke: var(--text); stroke-width: 3; stroke-dasharray: 8 6; }
+.arrow-head { fill: var(--text); }
+.floor { stroke: var(--text); stroke-width: 3; }
+.limit { stroke: var(--status-critical); stroke-width: 2.5; stroke-dasharray: 10 6; }
+.shuttle .skirt { fill: var(--surface); stroke: var(--text); stroke-width: 2; }
+.shuttle .cork, .landing .cork { fill: var(--shuttle-cork); stroke: var(--text); stroke-width: 2; }
+.shuttle .racket { fill: none; stroke: var(--muted); stroke-width: 3; }
+.law-svg .verdict { font-weight: 700; }
+.law-svg .ok .verdict { fill: var(--yes); }
+.law-svg .bad .verdict { fill: var(--no); }
+.inout-svg .outside { fill: var(--table-head); }
+.inout-svg .boundary { fill: var(--court-line); stroke: var(--border); }
+.law-svg .area-label { font-size: 15px; fill: var(--muted); }
+.law-svg .on-court { fill: #fff; }
+.line-key { margin: 10px 0 0; padding: 0; list-style: none; font-size: var(--fs-sm); }
+.line-key li { display: flex; gap: 8px; align-items: baseline; margin-bottom: 4px; }
+.key-num {
+  flex: none; display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; border-radius: 50%;
+  border: 2px solid var(--text); font-weight: 700; font-size: var(--fs-xs);
+}
+.law-legend { margin: 6px 0 0; font-size: var(--fs-sm); }
+.legend-swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; border: 1px solid var(--border); }
+.legend-swatch.from { background: color-mix(in srgb, var(--court-line) 22%, var(--court-bg)); }
+.legend-swatch.to { background: color-mix(in srgb, var(--court-hl) 85%, var(--court-bg)); }
+.law-table { max-width: 720px; margin-top: 12px; }
+.law-note { margin: 8px 0 0; font-size: var(--fs-sm); }
+.score-example { font-weight: 600; }
+@media (max-width: 899px) {
+  .law-split { grid-template-columns: minmax(0, 1fr); }
+  .law-figure { max-width: 440px; }
+}
 /* No scroll box: the table fits the page width and scrolls with the page, and
    the header row of player names sticks to the top of the window. overflow: clip
    keeps the rounded corners without making a scroll container, which would stop
@@ -845,7 +916,7 @@ input[type="date"], select {
   /* Six tabs in a balanced 3 × 2 grid rather than an uneven wrap. */
   /* The tint dims the court lines behind the two rows of tabs. */
   .tabs {
-    display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 4px;
+    display: grid; grid-template-columns: repeat(4, 1fr); column-gap: 4px;
     background: color-mix(in srgb, var(--head-bg) 88%, transparent);
   }
   /* 1fr columns never squeeze a label below its own width, so a long one

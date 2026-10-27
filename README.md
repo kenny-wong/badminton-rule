@@ -47,38 +47,43 @@ A few things the documents don't spell out, and how the site handles them:
 
 ## Development
 
-The site is plain HTML, CSS and JavaScript modules. There is no build step and there are no npm dependencies.
+The site is plain HTML, CSS and JavaScript modules. There is no build step and the site has no npm dependencies; Wrangler (Cloudflare's CLI) is the only dev dependency.
 
 ```sh
+npm install       # once, to install Wrangler
 npm test          # run every test (Node's built-in test runner; needs Node 22 or later)
-npm run dev       # serve site/ locally with Wrangler, including the _headers file
-npm run deploy    # publish site/ to Cloudflare Pages (needs access to the project)
+npm run dev       # serve public/ locally with Wrangler on port 8789, including the _headers file
+npm run deploy    # publish public/ to Cloudflare Pages (needs access to the project)
 ```
 
-To run a single test file, use `node --test tests/groups.test.js`. Any static file server also works for local viewing, for example `python -m http.server --directory site`.
+To run a single test file, use `node --test tests/groups.test.js`. Any static file server also works for local viewing, for example `python -m http.server --directory public`.
 
 ### Layout
 
 ```
-site/
+public/
   index.html          page shell; text is filled in per language by app.js
-  app.js              hash router and every view (#/grades, #/tier, #/compare, #/check, #/groups, #/notes)
+  app.js              hash router and every view (#/grades, #/tier, #/compare, #/check, #/groups, #/laws, #/notes)
   eligibility.js      age and grade rules per tier (pure functions, unit tested)
   groups.js           round-robin ranking, tie-breaks, scoring rules and the qualification analysis
+  saved-groups.js     saved round-robin groups in localStorage
+  laws.js             the Laws of Badminton page and its diagrams
   profiles.js         saved players in localStorage
   i18n.js             language switching
   locales/*.js        UI strings: en, zh-Hant, ja, fr
   data/tc-2026.json   the whole T&Cs matrix, transcribed by hand
   data/tc-2026.*.json the rule text translated, keyed by the English sentence
+  _headers            security headers (Content-Security-Policy and so on)
 tests/                node:test suites for all of the above
+wrangler.jsonc        Cloudflare Pages project settings
 ```
 
 ### Keeping it accurate
 
-- **Rule text** lives in `site/data/tc-2026.json`. Each rule lists the tiers and rule areas it covers, so a merged cell in the PDF is one entry. The tests check that every tier has exactly one rule for every area.
+- **Rule text** lives in `public/data/tc-2026.json`. Each rule lists the tiers and rule areas it covers, so a merged cell in the PDF is one entry. The tests check that every tier has exactly one rule for every area.
 - **If you change any English rule text, update all three translation files.** The tests fail if a translation is missing or left over. They also fail if a UI string or `{placeholder}` doesn't match `locales/en.js`.
-- **Entry rules** (grade bars, minimum grades, birth years) are tables in `site/eligibility.js`. The Grades chart and the My players checker both read them, so the two can't disagree.
-- **Scoring per tier** (best of three or one game; 21, 15 or 11 points; setting) is `SCORING_PRESETS` in `site/groups.js`, taken from the matrix's Matches column.
+- **Entry rules** (grade bars, minimum grades, birth years) are tables in `public/eligibility.js`. The Grades chart and the My players checker both read them, so the two can't disagree.
+- **Scoring per tier** (best of three or one game; 21, 15 or 11 points; setting) is `SCORING_PRESETS` in `public/groups.js`, taken from the matrix's Matches column.
 - `app.js` has no unit tests, so after changing it, load every page and check that none is stuck on "Loading the rules…" or shows "Couldn’t load the rules".
 
 For a new season, update the data file and its translations, the season year and birth-year limits in `eligibility.js`, the scoring presets if the Matches column changes, and the source links.

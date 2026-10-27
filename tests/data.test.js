@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-const data = JSON.parse(readFileSync(new URL('../site/data/tc-2026.json', import.meta.url), 'utf8'));
+const data = JSON.parse(readFileSync(new URL('../public/data/tc-2026.json', import.meta.url), 'utf8'));
 
 test('every tier has exactly one rule for every area', () => {
   for (const area of data.areas) {

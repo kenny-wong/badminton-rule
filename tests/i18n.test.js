@@ -2,13 +2,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-import { LOCALES, pickLocale } from '../site/i18n.js';
-import en from '../site/locales/en.js';
+import { LOCALES, pickLocale } from '../public/i18n.js';
+import en from '../public/locales/en.js';
 
 const placeholders = (s) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
 const readJson = (path) => JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
 
-const data = readJson('../site/data/tc-2026.json');
+const data = readJson('../public/data/tc-2026.json');
 const dataStrings = new Set([
   ...data.areas.map((a) => a.label),
   ...data.circuits.map((c) => c.label),
@@ -26,7 +26,7 @@ for (const { id, catalog } of LOCALES.filter((l) => l.id !== 'en')) {
   });
 
   test(`${id} translates every sentence of the rules`, () => {
-    const translations = readJson(`../site/data/tc-2026.${id}.json`);
+    const translations = readJson(`../public/data/tc-2026.${id}.json`);
     for (const english of dataStrings) {
       assert.ok(translations[english]?.trim(), `${id} has no translation for: ${english}`);
     }

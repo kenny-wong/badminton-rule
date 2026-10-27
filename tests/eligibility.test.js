@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { GRADES, ageOn, checkEligibility, gradeChartRows, juniorAgeGroup, parseDate } from '../site/eligibility.js';
+import { GRADES, ageOn, checkEligibility, gradeChartRows, juniorAgeGroup, parseDate } from '../public/eligibility.js';
 
 const result = (player, tier) => checkEligibility(player).find((r) => r.tier === tier);
 const grades = (singles, doubles, mixed) => ({ singles, doubles, mixed });
@@ -110,7 +110,7 @@ test('grade chart rows agree with the matrix bars', () => {
 });
 
 test('every message key used by the rules exists in the English strings', async () => {
-  const { default: en } = await import('../site/locales/en.js');
+  const { default: en } = await import('../public/locales/en.js');
   const keys = new Set();
   const collect = (m) => m && keys.add(m.key);
   for (const dob of ['1985-01-01', '2009-06-01', '2010-06-01', '2012-06-01', '2016-06-01']) {

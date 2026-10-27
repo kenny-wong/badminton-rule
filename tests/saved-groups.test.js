@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { MAX_GROUPS, groupKind, groupNames, loadGroups, newGroup, sanitizeState, sanitizeStore, saveGroups } from '../site/saved-groups.js';
+import { MAX_GROUPS, groupKind, groupNames, loadGroups, newGroup, sanitizeState, sanitizeStore, saveGroups } from '../public/saved-groups.js';
 
 function memoryStorage() {
   const items = new Map();

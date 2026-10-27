@@ -7,5 +7,5 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 test('the version in the page heading matches package.json', () => {
   const { version } = JSON.parse(read('../package.json'));
   assert.match(version, /^\d+\.\d+\.\d+$/);
-  assert.equal(read('../site/index.html').match(/class="version">v([^<]+)</)?.[1], version);
+  assert.equal(read('../public/index.html').match(/class="version">v([^<]+)</)?.[1], version);
 });

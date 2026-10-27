@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { marginRange, matchWinner, qualificationDetail, scoresWithMargin } from '../site/groups.js';
+import { marginRange, matchWinner, qualificationDetail, scoresWithMargin } from '../public/groups.js';
 
 const players = (...ids) => ids.map((id) => ({ id, name: id }));
 const m = (a, b, ...games) => ({ a, b, games });

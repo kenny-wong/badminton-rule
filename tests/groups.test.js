@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, rankGroup } from '../site/groups.js';
+import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, rankGroup } from '../public/groups.js';
 import { readFileSync } from 'node:fs';
 
 const players = (...ids) => ids.map((id) => ({ id, name: id }));
@@ -255,7 +255,7 @@ test('unfinished games do not count towards a match or the standings', () => {
 });
 
 test('every tier in the matrix has a scoring preset, and the default is the BWF standard', () => {
-  const data = JSON.parse(readFileSync(new URL('../site/data/tc-2026.json', import.meta.url), 'utf8'));
+  const data = JSON.parse(readFileSync(new URL('../public/data/tc-2026.json', import.meta.url), 'utf8'));
   for (const tier of data.tiers) assert.ok(SCORING_PRESETS[tier.id], `no preset for ${tier.id}`);
   assert.deepEqual(SCORING_PRESETS.bwf, { format: 'bestOf3', points: 21, setting: true });
   for (const [id, preset] of Object.entries(SCORING_PRESETS)) {

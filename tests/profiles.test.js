@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { loadProfiles, newProfile, sanitizeProfiles, saveProfiles } from '../site/profiles.js';
+import { loadProfiles, newProfile, sanitizeProfiles, saveProfiles } from '../public/profiles.js';
 
 function memoryStorage() {
   const items = new Map();

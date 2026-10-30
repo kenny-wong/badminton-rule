@@ -1337,11 +1337,13 @@ function importGroup(group, label) {
   document.getElementById('calc-step-group')?.scrollIntoView({ block: 'start' });
 }
 
-/** The ↻ on a match's row: updates that match's score only, from badminfo's latest results. */
-async function refreshMatch(i, j, button) {
+/**
+ * "↻ Update" beside the matches heading of an imported group: every match from
+ * badminfo's latest results, adding entries that have played since (the same
+ * as the ↻ beside the link, but without reloading the list of groups).
+ */
+async function refreshGroup(button) {
   const source = calc.source;
-  const players = calcPlayers();
-  const names = { a: players[i].name, b: players[j].name };
   button.disabled = true;
   const { tournament, error } = await fetchTournament(source.link);
   if (calc.source !== source) return; // another group was opened meanwhile
@@ -1349,38 +1351,20 @@ async function refreshMatch(i, j, button) {
   if (error) importer.rowStatus = t(`groups.importErr.${error}`);
   else if (!group) importer.rowStatus = t('groups.refreshGroupGone');
   else {
-    const { state, changed, found, scored } = mergeResults(sanitizeState(calc), group, `${i}-${j}`);
-    if (changed) Object.assign(calc, { scores: state.scores, example: null });
-    track('match_refresh', { tournament: tournamentOf(source.link), group: calc.importedName || source.name });
-    let key = 'groups.refreshMatchSame';
-    if (!found) key = 'groups.refreshMatchMissing';
-    else if (!scored) key = 'groups.refreshMatchNoScore';
-    else if (changed) key = 'groups.refreshMatchDone';
-    importer.rowStatus = t(key, names);
+    const { state, changed, added } = mergeResults(sanitizeState(calc), group);
+    Object.assign(calc, { entries: state.entries, ids: state.ids, size: state.size, scores: state.scores, example: null });
+    if (importer.tournament?.url === tournament.url) importer.tournament = tournament;
+    importer.rowStatus = [t('groups.refreshAllDone', { n: changed }), added ? t('groups.refreshAdded', { n: added }) : null].filter(Boolean).join(' ');
+    track('group_refresh', { tournament: tournament.id, group: calc.importedName || source.name });
   }
-  drawGroupInputs();
-  drawGroupResult();
+  renderGroups(); // entries may have been added
 }
 
-/**
- * Whether an entry is still one of the imported tournament's: its players carry
- * the badminfo ids the import gave them, and typing a name clears that id. A
- * group imported before ids were kept is judged by having names at all.
- */
-function fromTournament(i) {
-  if (!calc.source) return false;
-  const slots = calc.entries[i].slice(0, slotsPerEntry()).map((n, k) => ({ n: n.trim(), id: calc.ids[i][k] }));
-  if (!calc.ids.slice(0, calc.size).some((e) => e.some(Boolean))) return slots.some((x) => x.n);
-  return slots.every((x) => x.n && x.id);
-}
-
-/** "↻ Update" beside a match's score: only for a match between two of the tournament's entries. */
-function refreshRowButton(i, j) {
-  if (!fromTournament(i) || !fromTournament(j)) return null;
-  const players = calcPlayers();
-  const label = t('groups.refreshMatch', { a: players[i].name, b: players[j].name });
-  return h('button', { type: 'button', class: 'small-button row-refresh', title: label, 'aria-label': label,
-    onclick: (e) => refreshMatch(i, j, e.currentTarget) }, h('span', { 'aria-hidden': 'true' }, '↻ '), t('groups.refreshShort'));
+/** Only for a group imported from a tournament: a hand-made group has nothing to update from. */
+function refreshGroupButton() {
+  if (!calc.source) return null;
+  return h('button', { type: 'button', class: 'small-button', title: t('groups.refreshGroup'), onclick: (e) => refreshGroup(e.currentTarget) },
+    h('span', { 'aria-hidden': 'true' }, '↻ '), t('groups.refreshShort'));
 }
 
 /** A scoring preset's tier name: "Junior Silver", "Junior Gold U11". */
@@ -1724,7 +1708,7 @@ function drawGroupInputs() {
               ` ${t('groups.withdrew')}`)))))))),
       h('div', {},
         h('div', { class: 'calc-heading' },
-          h('h4', {}, t('groups.matches')),
+          h('span', { class: 'heading-start' }, h('h4', {}, t('groups.matches')), refreshGroupButton()),
           h('button', { type: 'button', class: 'link-button', onclick: () => {
             calc.scores = {};
             calc.example = null;
@@ -1743,7 +1727,7 @@ function drawGroupInputs() {
               h('span', { class: 'side side-a' }, entryLabel(i, short)), h('span', { class: 'vs' }, ' – '), h('span', { class: 'side side-b' }, entryLabel(j, short))),
             Array.from({ length: gameCount }, (_, g) => h('td', { class: 'game-cell', 'data-label': gameCount > 1 ? t('groups.game', { n: g + 1 }) : null },
               scoreInput(i, j, g, 0), h('span', { class: 'dash', 'aria-hidden': 'true' }, '–'), scoreInput(i, j, g, 1))),
-            h('td', { class: 'row-clear-cell' }, refreshRowButton(i, j), clearRowButton(i, j))))))))));
+            h('td', { class: 'row-clear-cell' }, clearRowButton(i, j))))))))));
   markWinners();
 }
 

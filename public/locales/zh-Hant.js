@@ -272,11 +272,6 @@ export default {
   'groups.importShowMine': '只顯示有你已儲存選手的小組',
   'groups.importNoPlayers': '在「自訂選手」儲存選手後，這裡只會列出他們所在的小組。',
   'groups.importRefresh': '重新整理小組，並從 badminfo 更新目前小組的比分',
-  'groups.refreshMatch': '從 badminfo 更新 {a} 對 {b} 的比分',
-  'groups.refreshMatchDone': '已從 badminfo 更新 {a} 對 {b}。',
-  'groups.refreshMatchSame': '{a} 對 {b} 的比分已是最新。',
-  'groups.refreshMatchNoScore': 'badminfo 暫時沒有 {a} 對 {b} 的比分。badminfo 會每隔一段時間從 Badminton England 取得賽果。',
-  'groups.refreshMatchMissing': 'badminfo 上這個小組沒有 {a} 對 {b} 的比賽。名字是否改過？',
   'groups.refreshAllDone': '已從 badminfo 重新整理比分：{n} 場有變更。',
   'groups.refreshAdded': '新增參賽單位：{n} 個。',
   'groups.refreshGroupGone': 'badminfo 上已沒有這個小組。',
@@ -617,4 +612,5 @@ export default {
   'audit.d.bot': '機械人',
   'account.expired': '你已登出，最近的改動只儲存在這個瀏覽器。請重新登入，以儲存到你的帳戶。',
   'groups.refreshShort': '更新',
+  'groups.refreshGroup': '從 badminfo 更新這個小組的所有比分',
 };

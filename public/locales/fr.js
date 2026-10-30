@@ -271,11 +271,6 @@ export default {
   'groups.importShowMine': 'Afficher seulement les poules avec vos joueurs enregistrés',
   'groups.importNoPlayers': 'Enregistrez des joueurs dans Mes joueurs, et seules leurs poules seront listées ici.',
   'groups.importRefresh': 'Actualiser les poules et mettre à jour les scores de la poule ouverte depuis badminfo',
-  'groups.refreshMatch': 'Mettre à jour le score de {a} contre {b} depuis badminfo',
-  'groups.refreshMatchDone': '{a} contre {b} mis à jour depuis badminfo.',
-  'groups.refreshMatchSame': '{a} contre {b} est déjà à jour.',
-  'groups.refreshMatchNoScore': 'badminfo n’a pas encore de score pour {a} contre {b}. Il reprend les résultats de Badminton England à intervalles réguliers.',
-  'groups.refreshMatchMissing': 'badminfo n’a pas de match {a} contre {b} dans cette poule. Les noms ont-ils été modifiés ?',
   'groups.refreshAllDone': 'Scores actualisés depuis badminfo : {n} modifié(s).',
   'groups.refreshAdded': 'Nouveaux inscrits ajoutés : {n}.',
   'groups.refreshGroupGone': 'Cette poule n’est plus sur badminfo.',
@@ -616,4 +611,5 @@ export default {
   'audit.d.bot': 'Robot',
   'account.expired': 'Vous avez été déconnecté : les dernières modifications ne sont enregistrées que dans ce navigateur. Reconnectez-vous pour les enregistrer dans votre compte.',
   'groups.refreshShort': 'Actualiser',
+  'groups.refreshGroup': 'Actualiser tous les matchs de cette poule depuis badminfo',
 };

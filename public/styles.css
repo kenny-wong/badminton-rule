@@ -1043,13 +1043,11 @@ input[type="date"], select {
 .import-form [hidden] { display: none; }
 .icon-button { margin-top: 0; padding: 9px 14px; flex: none; }
 .import-toggle { margin-top: 6px; padding-left: 0; font-size: var(--fs-sm); }
-.calc-matches .row-refresh { padding: 3px 10px; margin-right: 6px; }
 .calc-matches .row-clear-cell { vertical-align: middle; }
 .refresh-status { margin: -4px 0 8px; font-size: var(--fs-sm); }
 /* Adding a player from badminfo.com, and their ratings under each grade. */
 .player-import { margin-top: 16px; }
 .players-edit .rating { display: block; margin-top: 2px; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
-.players-edit .row-refresh { font-size: var(--fs-md); text-decoration: none; }
 /* A small outlined button that still stands out, such as "↻ Update rating". */
 .small-button {
   font: inherit; font-size: var(--fs-sm); font-weight: 650; padding: 4px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap;
@@ -1172,6 +1170,5 @@ a.small-button { display: inline-block; text-decoration: none; }
 .admin-legend dt { font-weight: 650; }
 .admin-legend dd { margin: 0; color: var(--muted); }
 .admin-note { font-size: var(--fs-xs); margin: -4px 0 8px; }
-@media (max-width: 599px) {
-  .calc-matches .row-refresh { margin-right: 0; }
-}
+.calc-heading .heading-start { display: inline-flex; align-items: center; gap: 10px; }
+.calc-heading .heading-start .small-button { font-size: var(--fs-xs); padding: 2px 10px; }

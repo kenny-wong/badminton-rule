@@ -272,11 +272,6 @@ export default {
   'groups.importShowMine': '保存した選手がいるグループのみ表示',
   'groups.importNoPlayers': 'マイ選手で選手を保存すると、その選手のグループだけがここに表示されます。',
   'groups.importRefresh': 'グループを再読み込みし、開いているグループのスコアを badminfo から更新',
-  'groups.refreshMatch': '{a} 対 {b} のスコアを badminfo から更新',
-  'groups.refreshMatchDone': '{a} 対 {b} を badminfo から更新しました。',
-  'groups.refreshMatchSame': '{a} 対 {b} はすでに最新です。',
-  'groups.refreshMatchNoScore': '{a} 対 {b} のスコアはまだ badminfo にありません。badminfo は Badminton England の結果を一定間隔で取り込んでいます。',
-  'groups.refreshMatchMissing': 'badminfo のこのグループに {a} 対 {b} の試合がありません。名前を変更しましたか？',
   'groups.refreshAllDone': 'badminfo からスコアを更新しました：{n} 試合が変更。',
   'groups.refreshAdded': '追加された参加者：{n}。',
   'groups.refreshGroupGone': 'このグループは badminfo にもうありません。',
@@ -617,4 +612,5 @@ export default {
   'audit.d.bot': 'ボット',
   'account.expired': 'ログアウトされたため、最近の変更はこのブラウザにだけ保存されています。アカウントに保存するにはもう一度ログインしてください。',
   'groups.refreshShort': '更新',
+  'groups.refreshGroup': 'このグループの全試合を badminfo から更新',
 };

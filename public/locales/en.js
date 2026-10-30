@@ -272,11 +272,6 @@ export default {
   'groups.importShowMine': 'Show only groups with your saved players',
   'groups.importNoPlayers': 'Save players in My players, and only their groups are listed here.',
   'groups.importRefresh': 'Refresh the groups and update the open group’s scores from badminfo',
-  'groups.refreshMatch': 'Update the score of {a} v {b} from badminfo',
-  'groups.refreshMatchDone': 'Updated {a} v {b} from badminfo.',
-  'groups.refreshMatchSame': 'Already up to date: {a} v {b}.',
-  'groups.refreshMatchNoScore': 'badminfo has no score for {a} v {b} yet. It picks up results from Badminton England every so often.',
-  'groups.refreshMatchMissing': 'badminfo has no match {a} v {b} in this group. Were the names changed?',
   'groups.refreshAllDone': 'Scores refreshed from badminfo: {n} changed.',
   'groups.refreshAdded': 'New entries added: {n}.',
   'groups.refreshGroupGone': 'This group is no longer on badminfo.',
@@ -617,4 +612,5 @@ export default {
   'audit.d.bot': 'Bot',
   'account.expired': 'You were signed out, so recent changes are saved in this browser only. Sign in again to save them to your account.',
   'groups.refreshShort': 'Update',
+  'groups.refreshGroup': 'Update every match of this group from badminfo',
 };

@@ -550,4 +550,10 @@ export default {
   'notes.privacy1': '已儲存的選手及小組會保存在你的瀏覽器。如果你用 Google 登入，已儲存的選手也會以你的帳戶（Google 電郵及名稱）保存在本網站的伺服器，讓你在其他裝置上也能看到。',
   'notes.privacy2': '為了解網站的使用情況及防止濫用，伺服器會記錄每次瀏覽頁面及每項操作（例如新增選手、載入賽事或匯入小組），包括時間、你的 IP 位址及國家、瀏覽器，以及登入時的 Google 電郵。選手方面會記錄名字、來自 badminfo 連結還是手動輸入、badminfo ID 及級別，但不會記錄出生日期。只有網站擁有者可以查看這些紀錄，紀錄會保留至刪除為止。如要刪除你的紀錄，請聯絡網站擁有者。',
   'footer.privacy': '本網站會記錄頁面瀏覽及操作，包括你的 IP 位址，以及登入時的 Google 電郵。詳情見「備註」。',
+  'players.order': '次序',
+  'players.dragLabel': '拖動以移動 {name}，或按上下方向鍵',
+  'players.favourite': '把 {name} 加入我的最愛',
+  'players.unfavourite': '把 {name} 從我的最愛移除',
+  'players.favMark': '我的最愛',
+  'players.orderHint': '拖動 ⠿ 可排列選手次序。按 ☆ 加入我的最愛：最愛選手會排在最上面，並在「小組賽」頁以 ★ 標示。',
 };

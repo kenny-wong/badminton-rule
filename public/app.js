@@ -2,7 +2,7 @@ import { DISCIPLINES, GRADES, JUNIOR_AGE_GROUPS, SEASON, checkEligibility, grade
 import { LOCALES, currentLocale, initialLocale, setLocale, t, tParts, td } from './i18n.js';
 import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, qualificationDetail, rankGroup, shortNames } from './groups.js';
 import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, tournamentChoices, unscoredMatches } from './imported-group.js';
-import { MAX_PROFILES, addFromBadminfo, loadProfiles, loadSyncOwner, mergeProfiles, newProfile, playerChanges, profileFor, sanitizeProfiles, saveProfiles, saveSyncOwner, updateFromBadminfo } from './profiles.js';
+import { MAX_PROFILES, addFromBadminfo, favouritesFirst, loadProfiles, moveProfile, toggleFavourite, loadSyncOwner, mergeProfiles, newProfile, playerChanges, profileFor, sanitizeProfiles, saveProfiles, saveSyncOwner, updateFromBadminfo } from './profiles.js';
 import { renderLaws } from './laws.js';
 import { MAX_GROUPS, groupNames, loadGroups, newGroup, sanitizeState, saveGroups } from './saved-groups.js';
 
@@ -15,7 +15,7 @@ let data;
 let tierById;
 let groupsByArea; // areaId -> rules with identical wording merged, in tier order
 let lastBrowseRoute = '#/grades';
-let profiles = loadProfiles();
+let profiles = favouritesFirst(loadProfiles());
 
 const nodes = (children) => children.flat(Infinity).filter((c) => c != null && c !== false);
 
@@ -440,9 +440,9 @@ async function pullProfiles() {
     const res = await fetch('/api/players', { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const { players } = await res.json();
-    if (players && loadSyncOwner() === account.user.id) profiles = sanitizeProfiles(players);
+    if (players && loadSyncOwner() === account.user.id) profiles = favouritesFirst(sanitizeProfiles(players));
     else {
-      profiles = mergeProfiles(sanitizeProfiles(players ?? []), profiles);
+      profiles = favouritesFirst(mergeProfiles(sanitizeProfiles(players ?? []), profiles));
       saveSyncOwner(account.user.id);
       await pushProfiles();
     }
@@ -566,6 +566,71 @@ function profileActions(profile) {
   ];
 }
 
+// Reordering saved players: drag the ⠿ handle (pointer events, so it works with
+// a finger too), or focus it and press the up and down arrow keys. Favourites
+// stay above the others (moveProfile()).
+function startRowDrag(e, profile) {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  const handle = e.currentTarget;
+  const row = handle.closest('tr');
+  const body = row.parentElement;
+  const rows = () => [...body.querySelectorAll('tr[data-id]')];
+  const from = rows().indexOf(row);
+  let to = from;
+  row.classList.add('dragging');
+  handle.setPointerCapture(e.pointerId);
+  const clear = () => rows().forEach((r) => r.classList.remove('drop-before', 'drop-after', 'dragging'));
+  const move = (ev) => {
+    const list = rows();
+    // Insert before the first row whose middle is below the pointer.
+    let before = list.findIndex((r) => { const b = r.getBoundingClientRect(); return ev.clientY < b.top + b.height / 2; });
+    if (before < 0) before = list.length;
+    to = before > from ? before - 1 : before;
+    list.forEach((r, k) => {
+      r.classList.toggle('drop-before', k === before && to !== from);
+      r.classList.toggle('drop-after', before === list.length && k === list.length - 1 && to !== from);
+    });
+    if (ev.clientY < 60) scrollBy(0, -12); // keep going past the screen's edge
+    else if (ev.clientY > innerHeight - 60) scrollBy(0, 12);
+  };
+  const end = () => {
+    handle.removeEventListener('pointermove', move);
+    clear();
+    if (to === from) return;
+    profiles = moveProfile(profiles, from, to);
+    persistProfiles();
+    drawCheck();
+  };
+  handle.addEventListener('pointermove', move);
+  handle.addEventListener('pointerup', end, { once: true });
+  handle.addEventListener('pointercancel', end, { once: true });
+}
+
+function moveByKey(e, profile) {
+  const step = { ArrowUp: -1, ArrowDown: 1 }[e.key];
+  if (!step) return;
+  e.preventDefault();
+  const from = profiles.findIndex((p) => p.id === profile.id);
+  profiles = moveProfile(profiles, from, from + step);
+  persistProfiles();
+  drawCheck();
+  view.querySelector(`tr[data-id="${profile.id}"] .drag-handle`)?.focus();
+}
+
+function markFavourite(profile) {
+  profiles = toggleFavourite(profiles, profile.id);
+  persistProfiles();
+  drawCheck();
+  view.querySelector(`tr[data-id="${profile.id}"] .fav-toggle`)?.focus();
+}
+
+/** Whether a name (with its badminfo id, if known) is one of the reader's favourite players. */
+const isFavourite = (name, id = '') => Boolean(profileFor(profiles, name, id)?.favourite);
+
+/** A ★ before a favourite's name, wherever players are listed. */
+const favMark = (yes) => (yes ? h('span', { class: 'fav-star', 'aria-label': t('players.favMark') }, '★ ') : null);
+
 function profileRow(profile) {
   const linked = profile === linkedPlayer;
   const update = () => {
@@ -577,7 +642,16 @@ function profileRow(profile) {
     renderPlayerComparison();
   };
   const label = (field) => t('players.fieldFor', { field, name: profile.name || t('players.thisPlayer') });
-  return h('tr', { class: linked ? 'linked-row' : null },
+  const shownName = profile.name || t('players.thisPlayer');
+  return h('tr', { class: [linked ? 'linked-row' : '', profile.favourite ? 'fav-row' : ''].join(' ').trim() || null, 'data-id': linked ? null : profile.id },
+    h('td', { class: 'f-order' }, linked ? null : [
+      h('button', { type: 'button', class: 'drag-handle', 'aria-label': t('players.dragLabel', { name: shownName }), title: t('players.dragLabel', { name: shownName }),
+        onpointerdown: (e) => startRowDrag(e, profile), onkeydown: (e) => moveByKey(e, profile) }, '⠿'),
+      h('button', { type: 'button', class: 'fav-toggle', 'aria-pressed': String(profile.favourite),
+        'aria-label': t(profile.favourite ? 'players.unfavourite' : 'players.favourite', { name: shownName }),
+        title: t(profile.favourite ? 'players.unfavourite' : 'players.favourite', { name: shownName }),
+        onclick: () => markFavourite(profile) }, profile.favourite ? '★' : '☆'),
+    ]),
     h('td', { class: 'f-name', 'data-label': t('players.name') }, h('input', { type: 'text', class: GENDER_CLASS[profile.gender] ?? null, value: profile.name, maxlength: 60, 'aria-label': t('players.name'),
       placeholder: t('players.name'),
       oninput: (e) => { profile.name = e.target.value; update(); } })),
@@ -785,7 +859,7 @@ function renderPlayerComparison() {
         h('thead', {}, h('tr', {},
           h('th', { scope: 'col', class: 'corner' }, t('tier.label')),
           ready.map((p) => h('th', { scope: 'col', class: p === linkedPlayer ? 'linked-col' : null },
-            h('span', { class: ['player-name', GENDER_CLASS[p.gender]].filter(Boolean).join(' ') }, profileName(p)),
+            h('span', { class: ['player-name', GENDER_CLASS[p.gender]].filter(Boolean).join(' ') }, favMark(p.favourite), profileName(p)),
             h('span', { class: 'player-line' }, playerLine(p)),
             h('span', { class: 'player-line can-enter' }, t('players.canEnter', { n: enterable(p) })))))),
         h('tbody', {}, data.circuits.map((c) => {
@@ -844,11 +918,13 @@ function drawCheck() {
     h('div', { class: 'table-scroll' },
       h('table', { class: 'data-table players-edit' },
         h('thead', {}, h('tr', {},
+          h('th', { scope: 'col', class: 'f-order' }, h('span', { class: 'visually-hidden' }, t('players.order'))),
           h('th', { scope: 'col' }, t('players.name')), h('th', { scope: 'col' }, t('players.gender')), h('th', { scope: 'col' }, t('check.dob')),
           DISCIPLINES.map((d) => h('th', { scope: 'col' }, t(`disc.${d}`))),
           h('th', { scope: 'col' }, h('span', { class: 'visually-hidden' }, t('players.actions'))))),
         h('tbody', {}, rows.length ? rows.map(profileRow)
-          : h('tr', {}, h('td', { colspan: 7, class: 'muted' }, t('players.none')))))),
+          : h('tr', {}, h('td', { colspan: 8, class: 'muted' }, t('players.none')))))),
+    profiles.length > 1 ? h('p', { class: 'muted order-hint' }, t('players.orderHint')) : null,
     h('button', { type: 'button', class: 'button', onclick: () => {
       profiles.push(newProfile(t('players.defaultName', { n: profiles.length + 1 })));
       persistProfiles();
@@ -925,9 +1001,19 @@ function entryLabel(i, short = null) {
   if (!slots.length) return GROUP_LETTERS[i];
   return slots.map(({ n, id }, k) => {
     const shown = short?.get(n) ?? n;
-    return [k ? ' / ' : null, genderClass(n, id) ? h('span', { class: genderClass(n, id) }, shown) : shown];
+    const fav = isFavourite(n, id);
+    const cls = [genderClass(n, id), fav ? 'fav-name' : ''].filter(Boolean).join(' ');
+    return [k ? ' / ' : null, favMark(fav), cls ? h('span', { class: cls }, shown) : shown];
   });
 }
+
+/** Whether an entry holds one of the reader's favourite players. */
+function isFavouriteEntry(i) {
+  return calc.entries[i].slice(0, slotsPerEntry()).some((n, k) => n.trim() && isFavourite(n, calc.ids[i][k]));
+}
+
+/** The row classes for an entry: its reader's own players, and favourites among them. */
+const entryRowClass = (...entries) => [entries.some(isOwnEntry) ? 'own' : '', entries.some(isFavouriteEntry) ? 'fav' : ''].filter(Boolean).join(' ') || null;
 
 /** Surnames for players who aren't the reader's own, to save room in the results grid and the outlook. */
 function shortNameMap() {
@@ -1150,7 +1236,7 @@ function playerPicker() {
   return h('div', { class: 'calc-controls calc-fields import-player' },
     field(t('groups.importPlayer'), h('select', { id: 'import-player', onchange: (e) => pickImportPlayer(e.target.value) },
       h('option', { value: '' }, t('groups.importPlayerNone')),
-      linked.map((p) => h('option', { value: p.id, selected: p.id === playerPick.id }, p.name || t('players.unnamed'))))),
+      linked.map((p) => h('option', { value: p.id, selected: p.id === playerPick.id }, `${p.favourite ? '★ ' : ''}${p.name || t('players.unnamed')}`)))),
     h('span', { id: 'import-player-tournaments', class: 'calc-controls calc-fields', 'aria-live': 'polite' }));
 }
 
@@ -1272,15 +1358,17 @@ function importChoices(tour) {
   const hasSaved = profiles.some((p) => p.name.trim() || p.badminfoId);
   const mine = tour.groups.map((g) => savedPlayersIn(g, profiles));
   const filtering = hasSaved && !importer.showAll;
-  const shown = tour.groups.flatMap((g, i) => (!filtering || mine[i].length ? [i] : []));
+  const favs = tour.groups.map((g) => g.teams.some((team, ti) => team.some((n, k) => isFavourite(n, g.ids?.[ti]?.[k] ?? ''))));
+  // Groups holding a favourite come first; the sort keeps the rest in the tournament's order.
+  const shown = tour.groups.flatMap((g, i) => (!filtering || mine[i].length ? [i] : [])).sort((a, b) => favs[b] - favs[a]);
   const label = (i) => (mine[i].length ? `${labels[i]} (${mine[i].join(', ')})` : labels[i]);
   return [
     shown.length ? h('p', { class: 'muted import-pick' }, t(filtering ? 'groups.importPickMine' : 'groups.importPick')) : null,
     shown.length
       ? h('div', { class: 'palette-chips' }, shown.map((i) => h('button', {
-        type: 'button', class: 'chip-button', disabled: !fitsCalculator(tour.groups[i]), 'aria-pressed': String(isOpenGroup(tour.groups[i])),
+        type: 'button', class: ['chip-button', favs[i] ? 'fav-chip' : ''].join(' ').trim(), disabled: !fitsCalculator(tour.groups[i]), 'aria-pressed': String(isOpenGroup(tour.groups[i])),
         onclick: () => importGroup(tour.groups[i], label(i)),
-      }, label(i))))
+      }, favMark(favs[i]), label(i))))
       : h('p', { class: 'muted' }, t('groups.importNoneMine')),
     shown.some((i) => !fitsCalculator(tour.groups[i])) ? h('p', { class: 'muted import-note' }, t('groups.importSizeNote')) : null,
     hasSaved
@@ -1454,7 +1542,7 @@ function playerPalette() {
       type: 'button', class: ['player-chip', genderClass(name), placed.has(name) ? 'placed' : ''].filter(Boolean).join(' '), 'aria-pressed': String(calc.picked === name),
       onpointerdown: (e) => startDrag(e, name),
       onclick: (e) => { if (e.detail === 0) pickPlayer(name); }, // keyboard: Enter / Space
-    }, name))),
+    }, favMark(isFavourite(name)), name))),
     profiles.some((p) => p.gender) ? h('p', { class: 'muted gender-key' },
       h('span', { class: 'g-m' }, t('players.male')), ' · ', h('span', { class: 'g-f' }, t('players.female'))) : null,
     h('p', { class: 'muted palette-hint', 'aria-live': 'polite' }, calc.picked ? t('groups.picked', { name: calc.picked }) : t('groups.dragHint')));
@@ -1579,7 +1667,7 @@ function drawGroupInputs() {
             drawGroupResult();
           } }, t('groups.clearNames'))),
         h('div', { class: 'table-scroll' }, h('table', { class: 'data-table calc-players' },
-          h('tbody', {}, players.map((p, i) => h('tr', { class: isOwnEntry(i) ? 'own' : null },
+          h('tbody', {}, players.map((p, i) => h('tr', { class: entryRowClass(i) },
             h('th', { scope: 'row' }, p.id),
             h('td', { class: 'slots' }, Array.from({ length: slotsPerEntry() }, (_, k) => slotInput(i, k))),
             h('td', {}, h('label', { class: 'check' },
@@ -1600,7 +1688,7 @@ function drawGroupInputs() {
           h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, ''),
             Array.from({ length: gameCount }, (_, g) => h('th', { scope: 'col' }, gameCount > 1 ? t('groups.game', { n: g + 1 }) : '')),
             h('th', { scope: 'col' }, ''))),
-          h('tbody', {}, pairings(calc.size).map(([i, j]) => h('tr', { class: isOwnEntry(i) || isOwnEntry(j) ? 'own' : null },
+          h('tbody', {}, pairings(calc.size).map(([i, j]) => h('tr', { class: entryRowClass(i, j) },
             // A no-break space keeps the dash with the first side, so a long pair breaks only after it.
             h('th', { scope: 'row', class: 'pair', 'data-pair': `${i}-${j}` },
               h('span', { class: 'side side-a' }, entryLabel(i)), h('span', { class: 'vs' }, ' – '), h('span', { class: 'side side-b' }, entryLabel(j))),
@@ -1834,7 +1922,7 @@ function crossTable(result) {
         players.map((p, c) => h('th', { scope: 'col', title: p.name }, entryLabel(c, short))),
         h('th', { scope: 'col', class: 'num group-start' }, `${t('groups.colWon')}–${t('groups.colLost')}`),
         h('th', { scope: 'col', class: 'num' }, t('groups.colPos')))),
-      h('tbody', {}, players.map((p, r) => h('tr', { class: [p.withdrew ? 'withdrawn' : '', isOwnEntry(r) ? 'own' : ''].join(' ').trim() || null },
+      h('tbody', {}, players.map((p, r) => h('tr', { class: [p.withdrew ? 'withdrawn' : '', entryRowClass(r) ?? ''].join(' ').trim() || null },
         h('th', { scope: 'row', class: 'player', title: p.name }, entryLabel(r, short)),
         players.map((_, c) => cell(r, c)),
         h('td', { class: 'num group-start' }, `${byId[p.id].won}–${byId[p.id].lost}`),
@@ -1867,7 +1955,7 @@ function drawGroupResult() {
             h('th', { scope: 'col', class: 'num' }, t('groups.colDiff'))] : null,
           h('th', { scope: 'col', class: 'num group-start' }, t('groups.colFor')), h('th', { scope: 'col', class: 'num' }, t('groups.colAgainst')),
           h('th', { scope: 'col', class: 'num' }, t('groups.colDiff')))),
-      h('tbody', {}, result.standings.map((s) => h('tr', { class: [s.by === 'withdrew' ? 'withdrawn' : '', isOwnEntry(GROUP_LETTERS.indexOf(s.id)) ? 'own' : ''].join(' ').trim() || null },
+      h('tbody', {}, result.standings.map((s) => h('tr', { class: [s.by === 'withdrew' ? 'withdrawn' : '', entryRowClass(GROUP_LETTERS.indexOf(s.id)) ?? ''].join(' ').trim() || null },
         h('td', { class: 'pos' }, s.position),
         h('th', { scope: 'row', class: 'player' }, entryLabel(GROUP_LETTERS.indexOf(s.id))),
         h('td', { class: 'num group-start' }, s.won), h('td', { class: 'num' }, s.lost),

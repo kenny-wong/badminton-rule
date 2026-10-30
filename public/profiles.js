@@ -21,7 +21,7 @@ const NO_RATINGS = () => Object.fromEntries(DISCIPLINES.map((d) => [d, null]));
 export function newProfile(name = '') {
   return {
     id: newId(), name, gender: '', dob: '', grades: Object.fromEntries(DISCIPLINES.map((d) => [d, ''])),
-    badminfoId: '', beNumber: '', ratings: NO_RATINGS(), ratingsDate: '',
+    badminfoId: '', beNumber: '', ratings: NO_RATINGS(), ratingsDate: '', favourite: false,
   };
 }
 
@@ -44,6 +44,7 @@ export function sanitizeProfiles(raw) {
       beNumber: typeof p.beNumber === 'string' && /^\d{1,10}$/.test(p.beNumber) ? p.beNumber : '',
       ratings: Object.fromEntries(DISCIPLINES.map((d) => [d, rating(p.ratings?.[d])])),
       ratingsDate: typeof p.ratingsDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(p.ratingsDate) ? p.ratingsDate : '',
+      favourite: p.favourite === true,
     }));
 }
 
@@ -190,4 +191,36 @@ export function saveSyncOwner(userId, storage) {
   } catch {
     return false;
   }
+}
+
+// The list's order is the reader's own (they drag players into it), except that
+// favourites always come first.
+
+/** Favourites first, each part keeping its order. */
+export const favouritesFirst = (profiles) => [...profiles.filter((p) => p.favourite), ...profiles.filter((p) => !p.favourite)];
+
+/**
+ * Moves the player at `from` so it ends up at `to` (indexes into the list,
+ * favourites first). Favourites stay above the others: a move past the edge
+ * of the player's own part stops at that edge.
+ */
+export function moveProfile(profiles, from, to) {
+  const list = favouritesFirst(profiles);
+  const favourites = list.filter((p) => p.favourite).length;
+  const [moved] = list.splice(from, 1);
+  if (!moved) return list;
+  const [lo, hi] = moved.favourite ? [0, favourites - 1] : [favourites, list.length];
+  list.splice(Math.min(Math.max(to, lo), hi), 0, moved);
+  return list;
+}
+
+/**
+ * Marks or unmarks a favourite. Either way it lands where the two parts meet:
+ * a new favourite at the end of the favourites, an unmarked one at the top of the rest.
+ */
+export function toggleFavourite(profiles, id) {
+  const target = profiles.find((p) => p.id === id);
+  if (!target) return profiles;
+  const others = profiles.filter((p) => p !== target);
+  return [...others.filter((p) => p.favourite), { ...target, favourite: !target.favourite }, ...others.filter((p) => !p.favourite)];
 }

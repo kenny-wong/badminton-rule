@@ -549,4 +549,10 @@ export default {
   'notes.privacy1': 'Les joueurs et poules enregistrés sont conservés dans votre navigateur. Si vous vous connectez avec Google, vos joueurs enregistrés sont aussi conservés sur le serveur de ce site sous votre compte (votre e-mail et votre nom Google), pour apparaître sur vos autres appareils.',
   'notes.privacy2': 'Pour comprendre l’utilisation du site et empêcher les abus, le serveur enregistre chaque page vue et chaque action (par exemple ajouter un joueur, charger un tournoi ou importer une poule) avec l’heure, votre adresse IP et votre pays, votre navigateur et, si vous êtes connecté, votre e-mail Google. Pour les joueurs, il enregistre le nom, l’origine (lien badminfo ou saisie manuelle), l’identifiant badminfo et les classements, jamais la date de naissance. Seul le propriétaire du site peut voir ces données, conservées jusqu’à leur suppression. Pour faire supprimer les vôtres, contactez le propriétaire du site.',
   'footer.privacy': 'Ce site enregistre les pages vues et les actions avec votre adresse IP, et votre e-mail Google si vous vous connectez. Voir les Notes pour en savoir plus.',
+  'players.order': 'Ordre',
+  'players.dragLabel': 'Faites glisser pour déplacer {name}, ou utilisez les flèches haut et bas',
+  'players.favourite': 'Ajouter {name} aux favoris',
+  'players.unfavourite': 'Retirer {name} des favoris',
+  'players.favMark': 'Favori',
+  'players.orderHint': 'Faites glisser ⠿ pour ordonner vos joueurs. Marquez vos favoris avec ☆ : ils restent en haut et sont étoilés ★ sur la page Poules.',
 };

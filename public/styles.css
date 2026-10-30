@@ -1128,3 +1128,33 @@ a.small-button { display: inline-block; text-decoration: none; }
 .admin-table td, .admin-table th { font-size: var(--fs-sm); vertical-align: top; }
 .admin-table .nowrap { white-space: nowrap; }
 .admin-table .link-button { padding: 0; font-size: inherit; }
+
+/* Reordering and favourites on My players. */
+.players-edit .f-order { width: 1%; white-space: nowrap; }
+.drag-handle, .fav-toggle {
+  font: inherit; background: none; border: 0; cursor: pointer; padding: 6px 6px; border-radius: 6px; line-height: 1;
+}
+.drag-handle { cursor: grab; touch-action: none; color: var(--muted); font-size: 1.15rem; }
+.drag-handle:active { cursor: grabbing; }
+.fav-toggle { color: var(--muted); font-size: 1.2rem; }
+.fav-toggle[aria-pressed="true"] { color: #e0a100; }
+.drag-handle:focus-visible, .fav-toggle:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
+.players-edit tr.dragging { opacity: 0.45; }
+.players-edit tr.drop-before > td { box-shadow: inset 0 3px 0 var(--accent); }
+.players-edit tr.drop-after > td { box-shadow: inset 0 -3px 0 var(--accent); }
+.players-edit tr.fav-row > td { background: color-mix(in srgb, #e0a100 7%, transparent); }
+.order-hint { margin: 6px 0 0; font-size: var(--fs-sm); }
+/* Favourites wherever players are listed. */
+.fav-star { color: #e0a100; }
+.fav-name { font-weight: 700; }
+.chip-button.fav-chip { border-color: #e0a100; }
+.calc-standings tr.fav .player, .cross tr.fav th.player { box-shadow: inset 4px 0 0 #e0a100; }
+@media (max-width: 899px) {
+  /* Cards: the handle and star sit along the top of each card. */
+  .players-edit .f-order { grid-column: 1 / -1; width: auto; display: flex; gap: 4px; margin: -4px 0 -2px -6px; }
+  .players-edit tr.drop-before { box-shadow: 0 -3px 0 var(--accent); }
+  .players-edit tr.drop-after { box-shadow: 0 3px 0 var(--accent); }
+  .players-edit tr.drop-before > td, .players-edit tr.drop-after > td { box-shadow: none; }
+  .players-edit tr.fav-row { background: color-mix(in srgb, #e0a100 7%, transparent); }
+  .players-edit tr.fav-row > td { background: none; }
+}

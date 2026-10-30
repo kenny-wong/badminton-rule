@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
-import { MAX_PROFILES, addFromBadminfo, loadProfiles, loadSyncOwner, mergeProfiles, namesMatch, newProfile, playerChanges, profileFor, sanitizeProfiles, saveProfiles, saveSyncOwner, updateFromBadminfo } from '../public/profiles.js';
+import { MAX_PROFILES, addFromBadminfo, favouritesFirst, loadProfiles, moveProfile, toggleFavourite, loadSyncOwner, mergeProfiles, namesMatch, newProfile, playerChanges, profileFor, sanitizeProfiles, saveProfiles, saveSyncOwner, updateFromBadminfo } from '../public/profiles.js';
 
 function memoryStorage() {
   const items = new Map();
@@ -12,7 +12,7 @@ test('sanitizeProfiles drops bad grades and dates but keeps the profile', () => 
   const [p] = sanitizeProfiles([{ id: 'a', name: 'Amy', gender: 'X', dob: '2013-02-30x', grades: { singles: 'D', doubles: 'Z', mixed: 5 } }]);
   assert.deepEqual(p, {
     id: 'a', name: 'Amy', gender: '', dob: '', grades: { singles: 'D', doubles: '', mixed: '' },
-    badminfoId: '', beNumber: '', ratings: { singles: null, doubles: null, mixed: null }, ratingsDate: '',
+    badminfoId: '', beNumber: '', ratings: { singles: null, doubles: null, mixed: null }, ratingsDate: '', favourite: false,
   });
 });
 
@@ -190,4 +190,37 @@ test('the sync owner is kept per browser, and storage failures are swallowed', (
   const broken = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); } };
   assert.equal(loadSyncOwner(broken), null);
   assert.equal(saveSyncOwner('x', broken), false);
+});
+
+describe('ordering and favourites', () => {
+  const list = (...names) => names.map((n) => ({ ...newProfile(n.replace('*', '')), favourite: n.endsWith('*') }));
+  const names = (ps) => ps.map((p) => p.name + (p.favourite ? '*' : ''));
+
+  test('favouritesFirst keeps each part in order', () => {
+    assert.deepEqual(names(favouritesFirst(list('A', 'B*', 'C', 'D*'))), ['B*', 'D*', 'A', 'C']);
+  });
+
+  test('moveProfile reorders within a part and stops at its edge', () => {
+    const ps = list('F1*', 'F2*', 'A', 'B', 'C');
+    assert.deepEqual(names(moveProfile(ps, 4, 2)), ['F1*', 'F2*', 'C', 'A', 'B']);
+    assert.deepEqual(names(moveProfile(ps, 2, 4)), ['F1*', 'F2*', 'B', 'C', 'A']);
+    assert.deepEqual(names(moveProfile(ps, 1, 0)), ['F2*', 'F1*', 'A', 'B', 'C']);
+    // A player can't be dragged above the favourites, nor a favourite below them.
+    assert.deepEqual(names(moveProfile(ps, 4, 0)), ['F1*', 'F2*', 'C', 'A', 'B']);
+    assert.deepEqual(names(moveProfile(ps, 0, 4)), ['F2*', 'F1*', 'A', 'B', 'C']);
+    assert.deepEqual(names(moveProfile(ps, 9, 0)), names(ps));
+  });
+
+  test('toggleFavourite moves a new favourite to the end of the favourites, and back down when unmarked', () => {
+    const ps = list('F1*', 'A', 'B', 'C');
+    const marked = toggleFavourite(ps, ps[2].id);
+    assert.deepEqual(names(marked), ['F1*', 'B*', 'A', 'C']);
+    assert.deepEqual(names(toggleFavourite(marked, marked[0].id)), ['B*', 'F1', 'A', 'C']);
+    assert.equal(toggleFavourite(ps, 'nope'), ps);
+  });
+
+  test('sanitizeProfiles keeps the favourite mark', () => {
+    assert.equal(sanitizeProfiles([{ name: 'A', favourite: true }])[0].favourite, true);
+    assert.equal(sanitizeProfiles([{ name: 'A', favourite: 'yes' }])[0].favourite, false);
+  });
 });

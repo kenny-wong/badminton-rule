@@ -555,4 +555,5 @@ export default {
   'players.unfavourite': 'Retirer {name} des favoris',
   'players.favMark': 'Favori',
   'players.orderHint': 'Faites glisser ⠿ pour ordonner vos joueurs. Marquez vos favoris avec ☆ : ils restent en haut et sont étoilés ★ sur la page Poules.',
+  'groups.importLoadedTier': '{name} chargée. Format fixé par le niveau du tournoi, {tier} : {scoring}. Modifiez-le ci-dessous s’il est faux.',
 };

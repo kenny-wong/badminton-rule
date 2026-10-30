@@ -538,21 +538,18 @@ export const SCORING_PRESETS = {
 };
 
 /**
- * Shorter names for tight spaces (the results grid, the outlook): each player's
- * first name, so "Sam Carter" is "Sam". Names `keep(name)` says to keep (the
- * reader's own players) and one-word names stay whole. When two different
- * players share a first name, the surname's initial is added ("Sam C."), and
- * if that still clashes the full name is used.
+ * Shorter names for everywhere but the name boxes: the first name and the
+ * surname's initial, so "Sam Carter" is "Sam C.". Names `keep(name)` says to
+ * keep, and one-word names, stay whole. Two different players who would look
+ * the same keep their full names.
  * @returns {Map<string, string>} full name -> name to show.
  */
 export function shortNames(names, keep = () => false) {
   const full = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
   const words = (n) => n.split(/\s+/);
-  const given = (n) => words(n)[0].toLowerCase();
   const short = (n) => {
     const w = words(n);
-    if (keep(n) || w.length < 2) return n;
-    return full.some((o) => o !== n && given(o) === given(n)) ? `${w[0]} ${w.at(-1)[0]}.` : w[0];
+    return keep(n) || w.length < 2 ? n : `${w[0]} ${w.at(-1)[0]}.`;
   };
   const firstTry = new Map(full.map((n) => [n, short(n)]));
   return new Map(full.map((n) => [n, full.some((o) => o !== n && firstTry.get(o) === firstTry.get(n)) ? n : firstTry.get(n)]));

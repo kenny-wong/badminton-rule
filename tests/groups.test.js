@@ -284,18 +284,14 @@ test('only the next game can be entered, and nothing after the match is won', ()
   assert.equal(openGameCount([[21, 10]], 'oneGame'), 1);
 });
 
-test('shortNames keeps first names, the reader’s own players in full, and tells shared first names apart', () => {
-  const shown = shortNames(['Sam Carter', 'Al Reed', 'Kim Example', 'Ned Ward', 'Jay Moss', 'Jay Mills', 'Jay Mann', 'Madonna', ''],
-    (n) => n === 'Kim Example');
-  assert.equal(shown.get('Sam Carter'), 'Sam');
-  assert.equal(shown.get('Al Reed'), 'Al');
+test('shortNames shows the first name and the surname\u2019s initial, and full names where two would look the same', () => {
+  const shown = shortNames(['Sam Carter', 'Al Reed', 'Kim Example', 'Jay Moss', 'Jay Mann', 'Madonna', ''], (n) => n === 'Kim Example');
+  assert.equal(shown.get('Sam Carter'), 'Sam C.');
+  assert.equal(shown.get('Al Reed'), 'Al R.');
   assert.equal(shown.get('Kim Example'), 'Kim Example');
   assert.equal(shown.get('Madonna'), 'Madonna');
-  // Three Jays whose surnames all start with M would all be "Jay M.", so they stay in full.
+  // Jay Moss and Jay Mann would both be "Jay M.", so they stay in full.
   assert.equal(shown.get('Jay Moss'), 'Jay Moss');
-  assert.equal(shown.get('Jay Mills'), 'Jay Mills');
   assert.equal(shown.get('Jay Mann'), 'Jay Mann');
-  const two = shortNames(['Amy Lee', 'Amy Wong']);
-  assert.deepEqual([two.get('Amy Lee'), two.get('Amy Wong')], ['Amy L.', 'Amy W.']);
-  assert.equal(shortNames(['Amy  Lee']).get('Amy  Lee'), 'Amy');
+  assert.equal(shortNames(['Amy  Mary Lee']).get('Amy  Mary Lee'), 'Amy L.');
 });

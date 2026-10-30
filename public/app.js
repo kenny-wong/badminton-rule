@@ -1,7 +1,7 @@
 import { DISCIPLINES, GRADES, JUNIOR_AGE_GROUPS, SEASON, checkEligibility, gradeChartRows, juniorAgeGroup, parseDate } from './eligibility.js';
 import { LOCALES, currentLocale, initialLocale, setLocale, t, tParts, td } from './i18n.js';
 import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, qualificationDetail, rankGroup, shortNames } from './groups.js';
-import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, tournamentChoices, unscoredMatches } from './imported-group.js';
+import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, tournamentChoices, tournamentPreset, unscoredMatches } from './imported-group.js';
 import { MAX_PROFILES, addFromBadminfo, favouritesFirst, loadProfiles, moveProfile, toggleFavourite, loadSyncOwner, mergeProfiles, newProfile, playerChanges, profileFor, sanitizeProfiles, saveProfiles, saveSyncOwner, updateFromBadminfo } from './profiles.js';
 import { renderLaws } from './laws.js';
 import { MAX_GROUPS, groupNames, loadGroups, newGroup, sanitizeState, saveGroups } from './saved-groups.js';
@@ -1015,13 +1015,9 @@ function isFavouriteEntry(i) {
 /** The row classes for an entry: its reader's own players, and favourites among them. */
 const entryRowClass = (...entries) => [entries.some(isOwnEntry) ? 'own' : '', entries.some(isFavouriteEntry) ? 'fav' : ''].filter(Boolean).join(' ') || null;
 
-/** Surnames for players who aren't the reader's own, to save room in the results grid and the outlook. */
+/** "First L." for every player in the group: everywhere but the name boxes shows these. */
 function shortNameMap() {
-  const slots = calc.entries.slice(0, calc.size).flatMap((e, i) => e.slice(0, slotsPerEntry())
-    .map((n, k) => ({ n: n.trim(), own: Boolean(n.trim() && profileFor(profiles, n, calc.ids[i][k])) })))
-    .filter((s) => s.n);
-  const own = new Set(slots.filter((s) => s.own).map((s) => s.n));
-  return shortNames(slots.map((s) => s.n), (n) => own.has(n));
+  return shortNames(calc.entries.slice(0, calc.size).flatMap((e) => e.slice(0, slotsPerEntry())));
 }
 
 /** entryName() with shortNameMap()'s names: "Rai / Wang". */
@@ -1298,13 +1294,15 @@ function importGroup(group, label) {
   savedGroups.active = null;
   persistGroups();
   const source = { link: importer.tournament.url, event: group.event, name: group.name };
-  applyGroupState(groupState(group, calc, { source }));
+  const preset = tournamentPreset(importer.tournament, group.event);
+  applyGroupState(groupState(group, calc, { source, preset }));
   calc.importedName = label;
   calc.paletteOpen = null;
   track('group_import', { tournament: importer.tournament.id, group: label });
   const unscored = unscoredMatches(group);
   importer.note = [
-    t('groups.importLoaded', { name: label, scoring: scoringSummary() }),
+    preset ? t('groups.importLoadedTier', { name: label, tier: presetName(preset), scoring: scoringSummary() })
+      : t('groups.importLoaded', { name: label, scoring: scoringSummary() }),
     unscored ? (unscored === 1 ? t('groups.importUnscoredOne') : t('groups.importUnscoredMany', { n: unscored })) : null,
   ].filter(Boolean).join(' ');
   importer.rowStatus = null;
@@ -1344,6 +1342,12 @@ function refreshRowButton(i, j) {
     onclick: (e) => refreshMatch(i, j, e.currentTarget) }, '↻');
 }
 
+/** A scoring preset's tier name: "Junior Silver", "Junior Gold U11". */
+function presetName(preset) {
+  if (preset === 'junior-gold-u11') return `${tierById.get('junior-gold')?.name ?? 'Junior Gold'} U11`;
+  return tierById.get(preset)?.name ?? preset;
+}
+
 /** "25 Oct 2026 – 18 Apr 2027", in the page's language (British order in English). */
 function dateRange(start, end) {
   const locale = currentLocale() === 'en' ? 'en-GB' : currentLocale();
@@ -1361,7 +1365,10 @@ function importChoices(tour) {
   const favs = tour.groups.map((g) => g.teams.some((team, ti) => team.some((n, k) => isFavourite(n, g.ids?.[ti]?.[k] ?? ''))));
   // Groups holding a favourite come first; the sort keeps the rest in the tournament's order.
   const shown = tour.groups.flatMap((g, i) => (!filtering || mine[i].length ? [i] : [])).sort((a, b) => favs[b] - favs[a]);
-  const label = (i) => (mine[i].length ? `${labels[i]} (${mine[i].join(', ')})` : labels[i]);
+  const label = (i) => {
+    const short = shortNames(mine[i]);
+    return mine[i].length ? `${labels[i]} (${mine[i].map((n) => short.get(n)).join(', ')})` : labels[i];
+  };
   return [
     shown.length ? h('p', { class: 'muted import-pick' }, t(filtering ? 'groups.importPickMine' : 'groups.importPick')) : null,
     shown.length
@@ -1653,6 +1660,7 @@ function drawGroupInputs() {
   if (!box) return;
   const players = calcPlayers();
   const gameCount = calc.format === 'oneGame' ? 1 : 3;
+  const short = shortNameMap();
   fill(box,
     playerPalette(),
     h('div', { class: 'calc-columns' },
@@ -1691,7 +1699,7 @@ function drawGroupInputs() {
           h('tbody', {}, pairings(calc.size).map(([i, j]) => h('tr', { class: entryRowClass(i, j) },
             // A no-break space keeps the dash with the first side, so a long pair breaks only after it.
             h('th', { scope: 'row', class: 'pair', 'data-pair': `${i}-${j}` },
-              h('span', { class: 'side side-a' }, entryLabel(i)), h('span', { class: 'vs' }, ' – '), h('span', { class: 'side side-b' }, entryLabel(j))),
+              h('span', { class: 'side side-a' }, entryLabel(i, short)), h('span', { class: 'vs' }, ' – '), h('span', { class: 'side side-b' }, entryLabel(j, short))),
             Array.from({ length: gameCount }, (_, g) => h('td', { class: 'game-cell', 'data-label': gameCount > 1 ? t('groups.game', { n: g + 1 }) : null },
               scoreInput(i, j, g, 0), h('span', { class: 'dash', 'aria-hidden': 'true' }, '–'), scoreInput(i, j, g, 1))),
             h('td', { class: 'row-clear-cell' }, calc.source ? refreshRowButton(i, j) : null, clearRowButton(i, j))))))))));
@@ -1934,7 +1942,9 @@ function drawGroupResult() {
   const box = document.getElementById('calc-result');
   if (!box) return;
   autosaveGroup(); // every change to the calculator ends here
-  const result = rankGroup(calcPlayers(), calcMatches(), calc.format, { rules: scoringRules() });
+  const short = shortNameMap();
+  // Ranked with the short names, so the steps ("how it was worked out") use them too.
+  const result = rankGroup(calcPlayers().map((p, i) => ({ ...p, name: shortEntryName(i, short) })), calcMatches(), calc.format, { rules: scoringRules() });
   const bestOf3 = calc.format === 'bestOf3';
   fill(box,
     h('h4', {}, t('groups.standings')),
@@ -1957,7 +1967,7 @@ function drawGroupResult() {
           h('th', { scope: 'col', class: 'num' }, t('groups.colDiff')))),
       h('tbody', {}, result.standings.map((s) => h('tr', { class: [s.by === 'withdrew' ? 'withdrawn' : '', entryRowClass(GROUP_LETTERS.indexOf(s.id)) ?? ''].join(' ').trim() || null },
         h('td', { class: 'pos' }, s.position),
-        h('th', { scope: 'row', class: 'player' }, entryLabel(GROUP_LETTERS.indexOf(s.id))),
+        h('th', { scope: 'row', class: 'player', title: calcPlayers()[GROUP_LETTERS.indexOf(s.id)]?.name }, entryLabel(GROUP_LETTERS.indexOf(s.id), short)),
         h('td', { class: 'num group-start' }, s.won), h('td', { class: 'num' }, s.lost),
         bestOf3 ? [h('td', { class: 'num group-start' }, s.gamesWon), h('td', { class: 'num' }, s.gamesLost),
           h('td', { class: 'num diff' }, signed(s.gamesWon - s.gamesLost))] : null,

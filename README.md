@@ -50,7 +50,7 @@ A few things the documents don't spell out, and how the site handles them:
 - **Masters.** The matrix sets no grade limits and doesn't define the Masters age groups, so the checker doesn't judge age for Masters.
 - **Scoring presets.** Junior Gold U11 is "3 games to 15" with no mention of setting, so setting to 21 is assumed, as for the matrix's other 15-point games. Senior Tier 4 leaves the format to the organiser, so the calculator uses BE's recommended 3 games to 21.
 - **11-point games.** Setting is capped at 15, which is common practice; the documents don't state it.
-- **Imported groups.** badminfo doesn't say how a tournament is scored, so the calculator works it out from the scores: best of three if any match had two games, the highest of 21, 15 or 11 points that every game winner reached, and no setting only if a game ended at 21–20 (or 15–14, 11–10). A group lists only the entries that have played at least once, and matches won without a score (walkovers) are left blank.
+- **Imported groups.** The scoring comes from the tournament's tier when its name (or badminfo's level) shows one: for example a U15 Silver event is Junior Silver, 3 games to 15 with setting to 21. For open or restricted tournaments the calculator works it out from the scores: best of three if any match had two games, the highest of 21, 15 or 11 points that every game winner reached, and no setting only if a game ended at 21–20 (or 15–14, 11–10). A group lists only the entries that have played at least once, and matches won without a score (walkovers) are left blank.
 - **Points thresholds** in the group analysis assume games end at the target score (no extended play) when working out how many points a player needs.
 
 ## Development

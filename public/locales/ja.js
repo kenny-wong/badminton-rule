@@ -556,4 +556,5 @@ export default {
   'players.unfavourite': '{name} をお気に入りから外す',
   'players.favMark': 'お気に入り',
   'players.orderHint': '⠿ をドラッグして選手を並べ替えます。☆ でお気に入りにすると、一番上に表示され、グループのページで ★ が付きます。',
+  'groups.importLoadedTier': '{name} を読み込みました。大会のティア（{tier}）に合わせた形式：{scoring}。違う場合は下で変更してください。',
 };

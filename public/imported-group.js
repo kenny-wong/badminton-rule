@@ -88,7 +88,7 @@ export const unscoredMatches = (group) => group.matches.filter((m) => m.winner &
  * `source` records where the group came from, for refreshing, and `ids` the
  * players' badminfo ids, so saved players are known by id.
  */
-export function groupState(group, current = {}, { source = null } = {}) {
+export function groupState(group, current = {}, { source = null, preset = null } = {}) {
   const doubles = group.teams.some((t) => t.length > 1);
   const scores = {};
   for (const { a, b, games } of group.matches) {
@@ -96,7 +96,10 @@ export function groupState(group, current = {}, { source = null } = {}) {
     const [i, j] = a < b ? [a, b] : [b, a];
     scores[`${i}-${j}`] = games.map((g) => (a < b ? [...g] : [g[1], g[0]]));
   }
-  const scoring = scoringFromScores(group.matches)
+  // The tournament's own rules first (tournamentPreset()), then what the scores show, then the calculator's.
+  const rules = SCORING_PRESETS[preset];
+  const scoring = (rules && { format: rules.format, gamePoints: rules.points, noSetting: !rules.setting, preset })
+    ?? scoringFromScores(group.matches)
     ?? { format: current.format, gamePoints: current.gamePoints, noSetting: current.noSetting, preset: current.preset };
   return sanitizeState({
     ...scoring,
@@ -177,4 +180,32 @@ export function tournamentChoices(tournaments, today, { past = false, next = 5 }
   const upcoming = tournaments.filter((t) => !ended(t)).sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''));
   const before = tournaments.filter(ended).sort((a, b) => (b.start ?? '').localeCompare(a.start ?? ''));
   return { upcoming: past ? upcoming : upcoming.slice(0, next), past: past ? before : [], pastCount: before.length };
+}
+
+const LEVELS = { 1: 'bronze', 2: 'silver', 3: 'gold' };
+
+/**
+ * The scoring preset (see SCORING_PRESETS) for a tournament and one of its
+ * events, from the tournament's name and badminfo's category: "TheDKWay U15
+ * Silver" with event "OS U15" is Junior Silver. The level is Gold, Silver or
+ * Bronze from the name, else from the category; the age group comes from the
+ * event's name ("WS U11"), else the tournament's. U11 to U17 are Junior (Gold
+ * U11 has its own scoring), U19 is U19, Masters and Para by name, otherwise
+ * Senior; "Tier 4" is Senior Tier 4. Null when the level isn't known (open or
+ * restricted tournaments), so the scores decide.
+ */
+export function tournamentPreset(tournament, eventName = '') {
+  const name = tournament?.name ?? '';
+  if (/\btier\s*4\b/i.test(name)) return 'senior-tier4';
+  if (/\bpara\b/i.test(name)) return 'para';
+  const level = /\b(gold|silver|bronze)\b/i.exec(name)?.[1].toLowerCase() ?? LEVELS[tournament?.category] ?? null;
+  if (!level) return null;
+  const age = Number((/\bU\s?(\d{2})\b/i.exec(eventName) ?? /\bU\s?(\d{2})\b/i.exec(name))?.[1]);
+  let preset;
+  if (/\bmasters?\b/i.test(name)) preset = `masters-${level}`;
+  else if (age === 19) preset = `u19-${level}`;
+  else if (age >= 11 && age <= 17) preset = level === 'gold' && age === 11 ? 'junior-gold-u11' : `junior-${level}`;
+  else if (tournament?.ageGroup === 1) preset = `junior-${level}`;
+  else preset = `senior-${level}`;
+  return Object.hasOwn(SCORING_PRESETS, preset) ? preset : null;
 }

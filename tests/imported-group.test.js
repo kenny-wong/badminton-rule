@@ -3,7 +3,7 @@ import { describe, test } from 'node:test';
 
 import { summarize } from '../lib/badminfo.js';
 import { rankGroup } from '../public/groups.js';
-import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, scoringFromScores, tournamentChoices, unscoredMatches } from '../public/imported-group.js';
+import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, scoringFromScores, tournamentChoices, tournamentPreset, unscoredMatches } from '../public/imported-group.js';
 import { SAMPLE } from './fixtures/badminfo-sample.js';
 
 const match = (a, b, ...games) => ({ a, b, games, winner: null, note: null });
@@ -197,4 +197,30 @@ test('tournamentChoices lists the next few tournaments, and the past ones on req
   assert.deepEqual(all.upcoming.map((t) => t.id), ['t3', 't4', 't5', 't6', 't7', 't8']);
   assert.deepEqual(all.past.map((t) => t.id), ['t2', 't1']);
   assert.deepEqual(tournamentChoices([], today), { upcoming: [], past: [], pastCount: 0 });
+});
+
+test('tournamentPreset reads the tier from the tournament and the age group from the event', () => {
+  const t = (name, category = 4, ageGroup = 3) => ({ name, category, ageGroup });
+  assert.equal(tournamentPreset(t('TheDKWay U15 Silver', 2, 1), 'OS U15'), 'junior-silver');
+  assert.equal(tournamentPreset(t('Swindon Stars U15 Bronze October 2026', 1, 1), 'WS U15'), 'junior-bronze');
+  // One tournament, two age groups: Gold U11 has its own scoring.
+  assert.equal(tournamentPreset(t('Example U11 Gold & U15 Gold', 3, 1), 'BS U11'), 'junior-gold-u11');
+  assert.equal(tournamentPreset(t('Example U11 Gold & U15 Gold', 3, 1), 'BS U15'), 'junior-gold');
+  assert.equal(tournamentPreset(t('Example U19 Silver', 2, 1), 'MD U19'), 'u19-silver');
+  assert.equal(tournamentPreset(t('Example Masters Bronze', 1, 2), 'MD 40+'), 'masters-bronze');
+  assert.equal(tournamentPreset(t('Example Senior Gold', 3)), 'senior-gold');
+  assert.equal(tournamentPreset(t('Example Tier 4 Open')), 'senior-tier4');
+  // The category alone gives the level when the name doesn't.
+  assert.equal(tournamentPreset(t('Example Junior Series', 1, 1), 'GS U13'), 'junior-bronze');
+  // Open and restricted tournaments have no tier: the scores decide.
+  assert.equal(tournamentPreset(t('Sussex Super Series - Chichester'), 'OD Chichester'), null);
+  assert.equal(tournamentPreset(t('BJBA U14 & U19 2026 Restricted', 4, 1), 'OS U14'), null);
+  assert.equal(tournamentPreset(null), null);
+});
+
+test('groupState takes the tournament\u2019s scoring before what the scores show', () => {
+  const group = { teams: [['A'], ['B'], ['C']], matches: [match(0, 1, [21, 10])] };
+  const s = groupState(group, {}, { preset: 'junior-silver' });
+  assert.deepEqual([s.format, s.gamePoints, s.noSetting, s.preset], ['bestOf3', 15, false, 'junior-silver']);
+  assert.equal(groupState(group, {}, { preset: 'nope' }).format, 'oneGame'); // unknown: the scores decide
 });

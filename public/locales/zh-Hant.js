@@ -556,4 +556,5 @@ export default {
   'players.unfavourite': '把 {name} 從我的最愛移除',
   'players.favMark': '我的最愛',
   'players.orderHint': '拖動 ⠿ 可排列選手次序。按 ☆ 加入我的最愛：最愛選手會排在最上面，並在「小組賽」頁以 ★ 標示。',
+  'groups.importLoadedTier': '已載入「{name}」。按賽事級別（{tier}）設定賽制：{scoring}。如有錯誤，可在下方修改。',
 };

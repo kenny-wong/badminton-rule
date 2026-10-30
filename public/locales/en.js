@@ -556,4 +556,5 @@ export default {
   'players.unfavourite': 'Remove {name} from favourites',
   'players.favMark': 'Favourite',
   'players.orderHint': 'Drag ⠿ to put your players in order. Mark favourites with ☆: they stay at the top and are starred ★ on the Groups page.',
+  'groups.importLoadedTier': 'Loaded {name}. Scoring set by the tournament’s tier, {tier}: {scoring}. Change it below if it’s wrong.',
 };

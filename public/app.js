@@ -1,6 +1,6 @@
 import { DISCIPLINES, GRADES, JUNIOR_AGE_GROUPS, SEASON, checkEligibility, gradeChartRows, juniorAgeGroup, parseDate } from './eligibility.js';
 import { LOCALES, currentLocale, initialLocale, setLocale, t, tParts, td } from './i18n.js';
-import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, qualificationDetail, rankGroup } from './groups.js';
+import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, qualificationDetail, rankGroup, shortNames } from './groups.js';
 import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, tournamentChoices, unscoredMatches } from './imported-group.js';
 import { MAX_PROFILES, addFromBadminfo, loadProfiles, newProfile, playerChanges, profileFor, saveProfiles, updateFromBadminfo } from './profiles.js';
 import { renderLaws } from './laws.js';
@@ -794,11 +794,32 @@ function genderOf(name, id = '') {
 
 const genderClass = (name, id) => GENDER_CLASS[genderOf(name, id)] ?? '';
 
-/** An entry's name for display, each saved player coloured by gender: "Amy / Ben". */
-function entryLabel(i) {
+/**
+ * An entry's name for display, each saved player coloured by gender: "Amy / Ben".
+ * With `short` (from shortNameMap()), other players show just their surname.
+ */
+function entryLabel(i, short = null) {
   const slots = calc.entries[i].slice(0, slotsPerEntry()).map((n, k) => ({ n: n.trim(), id: calc.ids[i][k] })).filter((s) => s.n);
   if (!slots.length) return GROUP_LETTERS[i];
-  return slots.map(({ n, id }, k) => [k ? ' / ' : null, genderClass(n, id) ? h('span', { class: genderClass(n, id) }, n) : n]);
+  return slots.map(({ n, id }, k) => {
+    const shown = short?.get(n) ?? n;
+    return [k ? ' / ' : null, genderClass(n, id) ? h('span', { class: genderClass(n, id) }, shown) : shown];
+  });
+}
+
+/** Surnames for players who aren't the reader's own, to save room in the results grid and the outlook. */
+function shortNameMap() {
+  const slots = calc.entries.slice(0, calc.size).flatMap((e, i) => e.slice(0, slotsPerEntry())
+    .map((n, k) => ({ n: n.trim(), own: Boolean(n.trim() && profileFor(profiles, n, calc.ids[i][k])) })))
+    .filter((s) => s.n);
+  const own = new Set(slots.filter((s) => s.own).map((s) => s.n));
+  return shortNames(slots.map((s) => s.n), (n) => own.has(n));
+}
+
+/** entryName() with shortNameMap()'s names: "Rai / Wang". */
+function shortEntryName(i, short) {
+  const names = calc.entries[i].slice(0, slotsPerEntry()).map((n) => n.trim()).filter(Boolean);
+  return names.length ? names.map((n) => short.get(n) ?? n).join(' / ') : GROUP_LETTERS[i];
 }
 
 /** Loads an example's scores; names already placed in the group stay put. */
@@ -1583,7 +1604,8 @@ function outlookPanel() {
   const players = calcPlayers();
   const entry = outlookEntry();
   const matches = calcMatches();
-  const nameOf = Object.fromEntries(players.map((p) => [p.id, p.name]));
+  const short = shortNameMap();
+  const nameOf = Object.fromEntries(players.map((p, i) => [p.id, shortEntryName(i, short)]));
   const name = nameOf[entry];
   const goal = t(calc.outlook.places === 1 ? 'groups.goalFirst' : 'groups.goalTop2');
   const detail = qualificationDetail(players, matches, calc.format, entry, calc.outlook.places, { rules: scoringRules() });
@@ -1665,6 +1687,7 @@ function crossTable(result) {
   const players = calcPlayers();
   const rules = scoringRules();
   const byId = Object.fromEntries(result.standings.map((s) => [s.id, s]));
+  const short = shortNameMap();
   const gamesFor = (r, c) => (r < c ? pairGames(r, c) : pairGames(c, r).map((g) => (g ? [g[1], g[0]] : null)));
   const cell = (r, c) => {
     if (r === c) return h('td', { class: 'self', 'aria-hidden': 'true' });
@@ -1680,11 +1703,11 @@ function crossTable(result) {
     h('div', { class: 'table-scroll cross-scroll' }, h('table', { class: 'data-table cross' },
       h('thead', {}, h('tr', {},
         h('th', { scope: 'col', class: 'corner' }, ''),
-        players.map((_, c) => h('th', { scope: 'col' }, entryLabel(c))),
+        players.map((p, c) => h('th', { scope: 'col', title: p.name }, entryLabel(c, short))),
         h('th', { scope: 'col', class: 'num group-start' }, `${t('groups.colWon')}–${t('groups.colLost')}`),
         h('th', { scope: 'col', class: 'num' }, t('groups.colPos')))),
       h('tbody', {}, players.map((p, r) => h('tr', { class: [p.withdrew ? 'withdrawn' : '', isOwnEntry(r) ? 'own' : ''].join(' ').trim() || null },
-        h('th', { scope: 'row', class: 'player' }, entryLabel(r)),
+        h('th', { scope: 'row', class: 'player', title: p.name }, entryLabel(r, short)),
         players.map((_, c) => cell(r, c)),
         h('td', { class: 'num group-start' }, `${byId[p.id].won}–${byId[p.id].lost}`),
         h('td', { class: 'num pos' }, byId[p.id].position)))))),

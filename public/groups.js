@@ -536,3 +536,24 @@ export const SCORING_PRESETS = {
   para: BWF,
   other: BWF,
 };
+
+/**
+ * Shorter names for tight spaces (the results grid, the outlook): each player's
+ * surname (last word), so "Sam Carter" is "Carter". Names `keep(name)`
+ * says to keep (the reader's own players) and one-word names stay whole. When
+ * two different players share a surname, the first initial is added
+ * ("J. Moss"), and if that still clashes the full name is used.
+ * @returns {Map<string, string>} full name -> name to show.
+ */
+export function shortNames(names, keep = () => false) {
+  const full = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
+  const words = (n) => n.split(/\s+/);
+  const surname = (n) => words(n).at(-1).toLowerCase();
+  const short = (n) => {
+    const w = words(n);
+    if (keep(n) || w.length < 2) return n;
+    return full.some((o) => o !== n && surname(o) === surname(n)) ? `${w[0][0]}. ${w.at(-1)}` : w.at(-1);
+  };
+  const first = new Map(full.map((n) => [n, short(n)]));
+  return new Map(full.map((n) => [n, full.some((o) => o !== n && first.get(o) === first.get(n)) ? n : first.get(n)]));
+}

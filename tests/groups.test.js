@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, rankGroup } from '../public/groups.js';
+import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, rankGroup, shortNames } from '../public/groups.js';
 import { readFileSync } from 'node:fs';
 
 const players = (...ids) => ids.map((id) => ({ id, name: id }));
@@ -282,4 +282,20 @@ test('only the next game can be entered, and nothing after the match is won', ()
   assert.equal(openGameCount([[21, 20]], 'bestOf3', { setting: false }), 2);
   assert.equal(openGameCount([], 'oneGame'), 1);
   assert.equal(openGameCount([[21, 10]], 'oneGame'), 1);
+});
+
+test('shortNames keeps surnames, the reader\u2019s own players in full, and tells shared surnames apart', () => {
+  const shown = shortNames(['Sam Carter', 'Al Reed', 'Kim Example', 'Ned Ward', 'Jay Moss', 'Joe Moss', 'Jo Moss', 'Madonna', ''],
+    (n) => n === 'Kim Example');
+  assert.equal(shown.get('Sam Carter'), 'Carter');
+  assert.equal(shown.get('Al Reed'), 'Reed');
+  assert.equal(shown.get('Kim Example'), 'Kim Example');
+  assert.equal(shown.get('Madonna'), 'Madonna');
+  // Three Mosses: Jay and Joe would both be "J. Moss", so they stay in full.
+  assert.equal(shown.get('Jay Moss'), 'Jay Moss');
+  assert.equal(shown.get('Joe Moss'), 'Joe Moss');
+  assert.equal(shown.get('Jo Moss'), 'Jo Moss');
+  const two = shortNames(['Amy Lee', 'Ben Lee']);
+  assert.deepEqual([two.get('Amy Lee'), two.get('Ben Lee')], ['A. Lee', 'B. Lee']);
+  assert.equal(shortNames(['Amy  Lee']).get('Amy  Lee'), 'Lee');
 });

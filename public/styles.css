@@ -1124,7 +1124,8 @@ a.small-button { display: inline-block; text-decoration: none; }
 .footer-privacy { margin-top: 8px; font-size: var(--fs-xs); }
 /* The audit trail. */
 .admin-totals { font-weight: 600; }
-.admin-table td, .admin-table th { font-size: var(--fs-sm); vertical-align: top; }
+.admin-table td, .admin-table th { font-size: var(--fs-sm); vertical-align: middle; white-space: nowrap; padding-top: 6px; padding-bottom: 6px; }
+.admin-table .audit-detail { display: inline-block; max-width: 34em; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
 .admin-table .nowrap { white-space: nowrap; }
 .admin-table .link-button { padding: 0; font-size: inherit; }
 
@@ -1161,7 +1162,7 @@ a.small-button { display: inline-block; text-decoration: none; }
 /* The audit trail: folded repeats, the legend. */
 .admin-table tr.audit-group > td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
 .admin-table tr.audit-sub > td { font-size: var(--fs-xs); color: var(--muted); border-top: 0; }
-.audit-count { font-weight: 700; color: var(--accent); }
+.audit-count { font-weight: 700; color: var(--accent); text-decoration: none; padding: 0 2px; }
 .audit-action { border-bottom: 1px dotted var(--muted); cursor: help; }
 .audit-toggle { font-size: var(--fs-xs); }
 .admin-legend { margin: 10px 0; font-size: var(--fs-sm); }
@@ -1172,3 +1173,9 @@ a.small-button { display: inline-block; text-decoration: none; }
 .admin-note { font-size: var(--fs-xs); margin: -4px 0 8px; }
 .calc-heading .heading-start { display: inline-flex; align-items: center; gap: 10px; }
 .calc-heading .heading-start .small-button { font-size: var(--fs-xs); padding: 2px 10px; }
+
+/* When a match is due or was played, under its pairing. */
+.calc-matches .match-when { display: block; margin-top: 3px; font-size: var(--fs-xs); font-weight: 400; color: var(--muted); white-space: nowrap; }
+@media (max-width: 599px) {
+  .calc-matches .match-when { white-space: normal; }
+}

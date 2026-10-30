@@ -613,4 +613,10 @@ export default {
   'account.expired': 'You were signed out, so recent changes are saved in this browser only. Sign in again to save them to your account.',
   'groups.refreshShort': 'Update',
   'groups.refreshGroup': 'Update every match of this group from badminfo',
+  'groups.dueAt': 'Due {time}',
+  'groups.startedAt': 'Started {time}',
+  'groups.took': '{n} min',
+  'groups.court': 'Court {n}',
+  'groups.scoreSeen': 'score seen about {time}',
+  'groups.scheduleSource': 'Match times, courts and how long each match took come from Badminton England’s tournament pages (be.tournamentsoftware.com). “Score seen about” is when this page first saw a new score, so a little after the match ended.',
 };

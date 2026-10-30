@@ -613,4 +613,10 @@ export default {
   'account.expired': '你已登出，最近的改動只儲存在這個瀏覽器。請重新登入，以儲存到你的帳戶。',
   'groups.refreshShort': '更新',
   'groups.refreshGroup': '從 badminfo 更新這個小組的所有比分',
+  'groups.dueAt': '預計 {time}',
+  'groups.startedAt': '{time} 開始',
+  'groups.took': '{n} 分鐘',
+  'groups.court': '場地 {n}',
+  'groups.scoreSeen': '比分約 {time} 更新',
+  'groups.scheduleSource': '比賽時間、場地及每場用時來自 Badminton England 的賽事頁面（be.tournamentsoftware.com）。「比分約 … 更新」是本頁第一次看到新比分的時間，會比實際完場稍晚。',
 };

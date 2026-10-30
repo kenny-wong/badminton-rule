@@ -612,4 +612,10 @@ export default {
   'account.expired': 'Vous avez été déconnecté : les dernières modifications ne sont enregistrées que dans ce navigateur. Reconnectez-vous pour les enregistrer dans votre compte.',
   'groups.refreshShort': 'Actualiser',
   'groups.refreshGroup': 'Actualiser tous les matchs de cette poule depuis badminfo',
+  'groups.dueAt': 'Prévu à {time}',
+  'groups.startedAt': 'Commencé à {time}',
+  'groups.took': '{n} min',
+  'groups.court': 'Terrain {n}',
+  'groups.scoreSeen': 'score vu vers {time}',
+  'groups.scheduleSource': 'Les horaires, terrains et durées des matchs viennent des pages de tournoi de Badminton England (be.tournamentsoftware.com). « Score vu vers » est le moment où cette page a vu le nouveau score, donc un peu après la fin du match.',
 };

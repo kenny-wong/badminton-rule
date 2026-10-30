@@ -1,7 +1,7 @@
 import { DISCIPLINES, GRADES, JUNIOR_AGE_GROUPS, SEASON, checkEligibility, gradeChartRows, juniorAgeGroup, parseDate } from './eligibility.js';
 import { LOCALES, currentLocale, initialLocale, setLocale, t, tParts, td } from './i18n.js';
 import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, qualificationDetail, rankGroup, shortNames } from './groups.js';
-import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, tournamentChoices, tournamentPreset, unscoredMatches } from './imported-group.js';
+import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, scheduleFor, tournamentChoices, tournamentPreset, unscoredMatches } from './imported-group.js';
 import { MAX_PROFILES, addFromBadminfo, favouritesFirst, loadProfiles, moveProfile, toggleFavourite, loadSyncOwner, mergeProfiles, newProfile, playerChanges, profileFor, sanitizeProfiles, saveProfiles, saveSyncOwner, updateFromBadminfo } from './profiles.js';
 import { renderLaws } from './laws.js';
 import { MAX_GROUPS, groupNames, loadGroups, newGroup, sanitizeState, saveGroups } from './saved-groups.js';
@@ -1001,7 +1001,8 @@ const calc = {
   paletteOpen: null, // the saved players' fold as the reader set it; null: open only while places are empty
   scoringOpen: false, // the scoring settings start folded: an import or a tournament preset sets them
   importedName: null, // the badminfo group just imported, if any: it names the group when saved
-  source: null, // where an imported group came from ({ link, event, name }), so its results can be refreshed
+  source: null, // where an imported group came from ({ link, event, name, be, start, end }), so its results can be refreshed
+  seen: {}, // "i-j" -> when this page first saw the match's current score (ISO), from a refresh
 };
 
 /**
@@ -1134,7 +1135,7 @@ function startNewGroup() {
   savedGroups.active = null;
   persistGroups();
   Object.assign(calc, {
-    example: null, picked: null, importedName: null, source: null, size: 4, scores: {}, outlook: { entry: null, places: 1 },
+    example: null, picked: null, importedName: null, source: null, seen: {}, size: 4, scores: {}, outlook: { entry: null, places: 1 },
     entries: GROUP_LETTERS.map(() => ['', '']), ids: GROUP_LETTERS.map(() => ['', '']), withdrew: GROUP_LETTERS.map(() => false),
   });
   renderGroups();
@@ -1303,8 +1304,10 @@ async function refreshTournament() {
   if (tournament && calc.source?.link === tournament.url) {
     const group = findGroup(tournament, calc.source);
     if (group) {
-      const { state, changed, added } = mergeResults(sanitizeState(calc), group);
+      const { state, changed, changedKeys, added } = mergeResults(sanitizeState(calc), group);
       Object.assign(calc, { entries: state.entries, ids: state.ids, size: state.size, scores: state.scores, example: null });
+      noteSeen(changedKeys);
+      loadSchedule(true);
       importer.note = [t('groups.refreshAllDone', { n: changed }), added ? t('groups.refreshAdded', { n: added }) : null].filter(Boolean).join(' ');
       track('group_refresh', { tournament: tournament.id, group: calc.importedName || group.name });
       renderGroups();
@@ -1320,7 +1323,8 @@ function importGroup(group, label) {
   if (!activeGroup() && hasUnsavedWork() && !confirm(t('groups.confirmSwitch'))) return;
   savedGroups.active = null;
   persistGroups();
-  const source = { link: importer.tournament.url, event: group.event, name: group.name };
+  const tour = importer.tournament;
+  const source = { link: tour.url, event: group.event, name: group.name, be: tour.beId ?? '', start: tour.start ?? '', end: tour.end ?? '' };
   const preset = tournamentPreset(importer.tournament, group.event);
   applyGroupState(groupState(group, calc, { source, preset }));
   calc.importedName = label;
@@ -1351,8 +1355,10 @@ async function refreshGroup(button) {
   if (error) importer.rowStatus = t(`groups.importErr.${error}`);
   else if (!group) importer.rowStatus = t('groups.refreshGroupGone');
   else {
-    const { state, changed, added } = mergeResults(sanitizeState(calc), group);
+    const { state, changed, changedKeys, added } = mergeResults(sanitizeState(calc), group);
     Object.assign(calc, { entries: state.entries, ids: state.ids, size: state.size, scores: state.scores, example: null });
+    noteSeen(changedKeys);
+    loadSchedule(true);
     if (importer.tournament?.url === tournament.url) importer.tournament = tournament;
     importer.rowStatus = [t('groups.refreshAllDone', { n: changed }), added ? t('groups.refreshAdded', { n: added }) : null].filter(Boolean).join(' ');
     track('group_refresh', { tournament: tournament.id, group: calc.importedName || source.name });
@@ -1724,7 +1730,7 @@ function drawGroupInputs() {
           h('tbody', {}, pairings(calc.size).map(([i, j]) => h('tr', { class: entryRowClass(i, j) },
             // A no-break space keeps the dash with the first side, so a long pair breaks only after it.
             h('th', { scope: 'row', class: 'pair', 'data-pair': `${i}-${j}` },
-              h('span', { class: 'side side-a' }, entryLabel(i, short)), h('span', { class: 'vs' }, ' – '), h('span', { class: 'side side-b' }, entryLabel(j, short))),
+              h('span', { class: 'side side-a' }, entryLabel(i, short)), h('span', { class: 'vs' }, ' – '), h('span', { class: 'side side-b' }, entryLabel(j, short)), matchWhen(i, j)),
             Array.from({ length: gameCount }, (_, g) => h('td', { class: 'game-cell', 'data-label': gameCount > 1 ? t('groups.game', { n: g + 1 }) : null },
               scoreInput(i, j, g, 0), h('span', { class: 'dash', 'aria-hidden': 'true' }, '–'), scoreInput(i, j, g, 1))),
             h('td', { class: 'row-clear-cell' }, clearRowButton(i, j))))))))));
@@ -2162,11 +2168,61 @@ function renderGroups() {
         h('li', {}, h('a', { href: 'https://images.gc.badmintonenglandservices.co.uk/53012730-1ee3-11f1-a060-b1b720430faa.pdf', rel: 'noopener' }, t('groups.source1'))),
         h('li', {}, h('a', { href: 'https://www.badminton.org.au/wp-content/uploads/2024/01/Section-5.1-General-Competition-Regulations-11-November-2023-V4.0-1.pdf', rel: 'noopener' }, t('groups.source2')))),
       h('p', { class: 'muted' }, t('groups.sourceNote')),
-      h('p', { class: 'muted' }, t('groups.importSource'))));
+      h('p', { class: 'muted' }, t('groups.importSource')),
+      h('p', { class: 'muted' }, t('groups.scheduleSource'))));
   drawSavedChips();
   drawImport();
   drawGroupInputs();
   drawGroupResult();
+  loadSchedule(); // an imported group's match times, once per event
+}
+
+// Match times for an imported group: when each match is due (or was played),
+// the court and how long it took, from Badminton England's own tournament
+// pages via /api/schedule (badminfo doesn't have them). Kept per event.
+const schedule = { be: '', matches: null, busy: false };
+
+async function loadSchedule(again = false) {
+  const src = calc.source;
+  if (!src?.be || !src.start || schedule.busy || (!again && schedule.be === src.be && schedule.matches)) return;
+  schedule.busy = true;
+  try {
+    const res = await fetch(`/api/schedule?be=${src.be}&from=${src.start}&to=${src.end || src.start}`, { cache: 'no-cache' });
+    if (res.ok) Object.assign(schedule, { be: src.be, matches: (await res.json()).matches ?? [] });
+  } catch {
+    // no times: the matches show without them
+  }
+  schedule.busy = false;
+  if (calc.source === src) drawGroupInputs();
+}
+
+/** Notes the time a refresh first brought in a match's new score. */
+function noteSeen(keys) {
+  const now = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  calc.seen = { ...calc.seen };
+  for (const key of keys) calc.seen[key] = now;
+}
+
+/** "Due 09:00 · Court 3", or "09:00 start · 12 min · Court 3 · score seen about 09:20", under a pairing. */
+function matchWhen(i, j) {
+  const src = calc.source;
+  if (!src) return null;
+  const names = (k) => calc.entries[k].slice(0, slotsPerEntry()).map((n) => n.trim()).filter(Boolean);
+  const m = schedule.be === src.be ? scheduleFor(schedule.matches, names(i), names(j), src) : null;
+  const locale = currentLocale() === 'en' ? 'en-GB' : currentLocale();
+  const parts = [];
+  if (m) {
+    const days = src.start && src.end && src.start !== src.end;
+    const at = days ? `${new Date(`${m.date}T12:00:00Z`).toLocaleDateString(locale, { weekday: 'short', timeZone: 'UTC' })} ${m.time}` : m.time;
+    const played = m.duration || m.games.length;
+    parts.push(t(played ? 'groups.startedAt' : 'groups.dueAt', { time: at }));
+    if (m.duration) parts.push(t('groups.took', { n: m.duration }));
+    const court = /\s-\s*(\d+)$/.exec(m.court)?.[1];
+    if (court || m.court) parts.push(court ? t('groups.court', { n: court }) : m.court);
+  }
+  const seen = calc.seen?.[`${i}-${j}`];
+  if (seen) parts.push(t('groups.scoreSeen', { time: new Date(seen).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false }) }));
+  return parts.length ? h('span', { class: 'match-when', title: m?.court || null }, parts.join(' · ')) : null;
 }
 
 /** Lets a web address break after its dots and slashes, so it can't run off a phone. */
@@ -2224,7 +2280,7 @@ function drawAdmin() {
   if (!box || !adminView) return;
   const { q, body } = adminView;
   const locale = currentLocale() === 'en' ? 'en-GB' : currentLocale();
-  const when = (iso) => (iso ? new Date(iso).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' }) : '');
+  const when = (iso) => (iso ? new Date(iso).toLocaleString(locale, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '');
   const tournaments = new Map(body.events.filter((e) => e.action === 'tournament_load' && e.detail.tournament).map((e) => [e.detail.tournament, e.detail.name]));
   const examples = { two: 'groups.exTwo', circle: 'groups.exCircle', points: 'groups.exPoints' };
   const routeName = (r) => (r === 'admin' ? t('admin.title') : r === 'search' ? t('audit.searchPage') : TAB_ROUTES.includes(r) ? t(`tab.${r}`) : r ?? '?');
@@ -2257,21 +2313,27 @@ function drawAdmin() {
   const eventRows = [...groups].flatMap(([key, list]) => {
     const [e] = list;
     const open = adminOpen.has(key);
+    // The "×n" itself opens and closes the fold, so every row stays on one line.
     const toggle = list.length > 1
-      ? h('button', { type: 'button', class: 'link-button audit-toggle', 'aria-expanded': String(open),
-        onclick: () => { if (open) adminOpen.delete(key); else adminOpen.add(key); drawAdmin(); } },
-        open ? t('admin.collapse') : t('admin.expand', { n: list.length }))
+      ? h('button', { type: 'button', class: 'link-button audit-count', 'aria-expanded': String(open),
+        title: open ? t('admin.collapse') : t('admin.expand', { n: list.length }),
+        onclick: () => { if (open) adminOpen.delete(key); else adminOpen.add(key); drawAdmin(); } }, `${open ? '▾' : '▸'} ×${list.length}`)
       : null;
     const sameDetail = list.every((x) => detailText(x) === detailText(e));
+    // Long details are cut with "…" to keep the row to one line; the whole text is the tooltip.
+    const detailCell = (x, more = false) => {
+      const full = detailText(x);
+      return h('td', {}, h('span', { class: 'audit-detail', title: full }, more ? `${full} …` : full));
+    };
     const main = h('tr', { class: list.length > 1 ? 'audit-group' : null },
-      h('td', { class: 'nowrap' }, when(e.at)), h('td', {}, ipLink(e.ip), e.country ? ` ${e.country}` : ''),
+      h('td', {}, when(e.at)), h('td', {}, ipLink(e.ip), e.country ? ` ${e.country}` : ''),
       h('td', {}, accountCell(e.email)), h('td', {}, agentText(e.agent)),
-      h('td', { class: 'nowrap' }, actionCell(e.action), list.length > 1 ? h('span', { class: 'audit-count' }, ` ×${list.length}`) : null),
-      h('td', {}, open || sameDetail ? detailText(e) : [detailText(e), ' …'], toggle ? [' ', toggle] : null));
+      h('td', {}, actionCell(e.action), toggle ? [' ', toggle] : null),
+      detailCell(e, !open && !sameDetail));
     if (!open) return [main];
     return [main, ...list.slice(1).map((x) => h('tr', { class: 'audit-sub' },
-      h('td', { class: 'nowrap muted' }, new Date(x.at).toLocaleTimeString(locale)), h('td', {}), h('td', {}), h('td', {}, agentText(x.agent)),
-      h('td', {}), h('td', {}, detailText(x))))];
+      h('td', {}, new Date(x.at).toLocaleTimeString(locale, { hour12: false })), h('td', {}), h('td', {}), h('td', {}, agentText(x.agent)),
+      h('td', {}), detailCell(x)))];
   });
 
   const tt = body.totals ?? {};
@@ -2294,7 +2356,7 @@ function drawAdmin() {
       table('admin-table', [t('admin.colIp'), t('admin.colCountry'), t('admin.colAccount'), t('admin.colDevice'), t('admin.colViews'), t('admin.colEvents'), t('admin.colFirst'), t('admin.colLast')].map((c) => h('th', { scope: 'col' }, c)),
         body.visitors.map((v) => h('tr', {},
           h('td', {}, ipLink(v.ip)), h('td', {}, v.country), h('td', {}, v.emails || h('span', { class: 'muted' }, t('admin.anonymous'))),
-          h('td', {}, (v.devices ?? []).map((g, k) => [k ? h('br') : null, agentText(g)])),
+          h('td', {}, (v.devices ?? []).map(agentText).join(' / ')),
           h('td', { class: 'num' }, v.views), h('td', { class: 'num' }, v.events), h('td', { class: 'nowrap' }, when(v.firstAt)), h('td', { class: 'nowrap' }, when(v.lastAt))))),
       h('h3', { class: 'sub-title' }, t('admin.pages')),
       table('admin-table', [t('admin.colPage'), t('admin.colViews'), t('admin.colIps')].map((c) => h('th', { scope: 'col' }, c)),

@@ -119,7 +119,8 @@ export function groupState(group, current = {}, { source = null, preset = null }
  * are. With `only` ("i-j") just that match is updated. Otherwise every match
  * is, and entries that have played since the import (badminfo lists only
  * entries that have played) are added to the empty places, up to six.
- * @returns {{ state: object, changed: number, added: number, found: boolean, scored: boolean }}
+ * @returns {{ state: object, changed: number, changedKeys: string[], added: number, found: boolean, scored: boolean }}
+ *   `changedKeys`: the "i-j" matches whose score changed.
  *   `found`: whether badminfo has the match `only` names; `scored`: whether it has a score yet.
  */
 export function mergeResults(state, group, only = null) {
@@ -149,6 +150,7 @@ export function mergeResults(state, group, only = null) {
   };
   const scores = JSON.parse(JSON.stringify(state.scores));
   let changed = 0;
+  const changedKeys = [];
   let found = false;
   let scored = false;
   for (const m of group.matches) {
@@ -164,9 +166,10 @@ export function mergeResults(state, group, only = null) {
     if (JSON.stringify(scores[key]) !== JSON.stringify(games)) {
       scores[key] = games;
       changed++;
+      changedKeys.push(key);
     }
   }
-  return { state: sanitizeState({ ...state, entries, ids, size, scores }), changed, added, found, scored };
+  return { state: sanitizeState({ ...state, entries, ids, size, scores }), changed, changedKeys, added, found, scored };
 }
 
 /**
@@ -208,4 +211,25 @@ export function tournamentPreset(tournament, eventName = '') {
   else if (tournament?.ageGroup === 1) preset = `junior-${level}`;
   else preset = `senior-${level}`;
   return Object.hasOwn(SCORING_PRESETS, preset) ? preset : null;
+}
+
+/**
+ * The scheduled match (from /api/schedule) between two of the calculator's
+ * entries: the same players on each side, in either order, names compared
+ * without case or extra spaces. A match in the group's own draw ("XD U15 -
+ * Group A" for event "XD U15", group "Group A") wins over the same pairing
+ * elsewhere, such as a later knockout round.
+ */
+export function scheduleFor(matches, a, b, source = {}) {
+  const key = (names) => names.map((n) => n.trim().replace(/\s+/g, ' ').toLowerCase()).filter(Boolean).sort().join('|');
+  const ka = key(a);
+  const kb = key(b);
+  if (!ka || !kb) return null;
+  const same = (matches ?? []).filter((m) => {
+    const [x, y] = m.teams.map(key);
+    return (x === ka && y === kb) || (x === kb && y === ka);
+  });
+  const draw = (m) => m.draw.trim().toLowerCase();
+  const own = [`${source.event ?? ''} - ${source.name ?? ''}`.toLowerCase(), (source.name ?? '').toLowerCase()];
+  return same.find((m) => own.includes(draw(m))) ?? same.find((m) => draw(m).endsWith((source.name ?? '').toLowerCase())) ?? same[0] ?? null;
 }

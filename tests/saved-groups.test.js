@@ -36,7 +36,10 @@ test('sanitizeState keeps good values and drops bad ones', () => {
 
 test('sanitizeState keeps an imported group’s source only when it is a badminfo link', () => {
   const source = { link: 'https://badminfo.com/Tournament/x', event: 'WS Open', name: 'Group A' };
-  assert.deepEqual(sanitizeState({ source }).source, source);
+  assert.deepEqual(sanitizeState({ source }).source, { ...source, be: '', start: '', end: '' });
+  const full = { ...source, be: 'b997c3c5-38fb-4caf-a402-009664189ad6', start: '2026-10-24', end: '2026-10-24' };
+  assert.deepEqual(sanitizeState({ source: full }).source, full);
+  assert.deepEqual(sanitizeState({ source: { ...full, be: 'nope', start: 'soon' } }).source, { ...source, be: '', start: '', end: '2026-10-24' });
   assert.equal(sanitizeState({}).source, null);
   assert.equal(sanitizeState({ source: { ...source, link: 'https://evil.example/' } }).source, null);
   assert.equal(sanitizeState({ source: { ...source, name: '' } }).source, null);
@@ -101,4 +104,10 @@ test('groupNames letters groups that share a kind, and keeps aliases', () => {
     { kind: 'singles', letter: 'B' },
     { alias: 'Club night' },
   ]);
+});
+
+test('sanitizeState keeps when each match’s score was first seen, when well formed', () => {
+  const s = sanitizeState({ seen: { '0-1': '2026-10-24T09:12:00Z', '1-0': 'x', '0-2': 'yesterday', junk: '2026-10-24T09:12:00Z' } });
+  assert.deepEqual(s.seen, { '0-1': '2026-10-24T09:12:00Z' });
+  assert.deepEqual(sanitizeState({}).seen, {});
 });

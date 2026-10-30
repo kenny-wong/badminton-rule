@@ -3,7 +3,7 @@ import { describe, test } from 'node:test';
 
 import { summarize } from '../lib/badminfo.js';
 import { rankGroup } from '../public/groups.js';
-import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, scoringFromScores, tournamentChoices, tournamentPreset, unscoredMatches } from '../public/imported-group.js';
+import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, scheduleFor, scoringFromScores, tournamentChoices, tournamentPreset, unscoredMatches } from '../public/imported-group.js';
 import { SAMPLE } from './fixtures/badminfo-sample.js';
 
 const match = (a, b, ...games) => ({ a, b, games, winner: null, note: null });
@@ -103,7 +103,7 @@ test('savedPlayersIn knows a player by badminfo id first', () => {
 });
 
 test('groupState keeps the draw’s names and records the source', () => {
-  const source = { link: 'https://badminfo.com/Tournament/x', event: 'WD Open', name: 'Group A' };
+  const source = { link: 'https://badminfo.com/Tournament/x', event: 'WD Open', name: 'Group A', be: '', start: '', end: '' };
   const s = groupState({ teams: [['Amy Lee', 'Bea Wu'], ['Cat Ng', 'Dee Ho'], ['Eve', 'Fay']], matches: [] }, {}, { source });
   assert.deepEqual(s.entries[0], ['Amy Lee', 'Bea Wu']);
   assert.deepEqual(s.source, source);
@@ -223,4 +223,25 @@ test('groupState takes the tournament\u2019s scoring before what the scores show
   const s = groupState(group, {}, { preset: 'junior-silver' });
   assert.deepEqual([s.format, s.gamePoints, s.noSetting, s.preset], ['bestOf3', 15, false, 'junior-silver']);
   assert.equal(groupState(group, {}, { preset: 'nope' }).format, 'oneGame'); // unknown: the scores decide
+});
+
+test('mergeResults names the matches whose score changed', () => {
+  const state = groupState({ teams: [['A'], ['B'], ['C']], matches: [match(0, 1, [21, 10])] });
+  const r = mergeResults(state, { teams: [['A'], ['B'], ['C']], matches: [match(0, 1, [21, 10]), match(1, 2, [21, 5])] });
+  assert.deepEqual(r.changedKeys, ['1-2']);
+});
+
+test('scheduleFor finds a pairing in the group’s own draw first, either way round', () => {
+  const m = (draw, a, b, time) => ({ draw, teams: [a, b], time });
+  const schedule = [
+    m('XD U15', ['Amy Lee', 'Ben Ng'], ['Cat Ho', 'Dan Wu'], '14:45'), // the same pair again in the knockout
+    m('XD U15 - Group A', ['cat ho', 'Dan  Wu'], ['Ben Ng', 'Amy Lee'], '09:00'),
+    m('XD U15 - Group B', ['Eve', 'Fay'], ['Gus', 'Hal'], '09:15'),
+  ];
+  const source = { event: 'XD U15', name: 'Group A' };
+  assert.equal(scheduleFor(schedule, ['Amy Lee', 'Ben Ng'], ['Cat Ho', 'Dan Wu'], source).time, '09:00');
+  assert.equal(scheduleFor(schedule, ['Amy Lee', 'Ben Ng'], ['Cat Ho', 'Dan Wu'], { event: 'XD U15', name: 'Group Z' }).time, '14:45');
+  assert.equal(scheduleFor(schedule, ['Amy Lee', 'Ben Ng'], ['Eve', 'Fay'], source), null);
+  assert.equal(scheduleFor(schedule, ['', ''], ['Eve', 'Fay'], source), null);
+  assert.equal(scheduleFor(null, ['A'], ['B']), null);
 });

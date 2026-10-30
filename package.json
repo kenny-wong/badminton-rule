@@ -1,12 +1,14 @@
 {
   "name": "badminton-tcs",
-  "version": "1.10.2",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test \"tests/*.test.js\"",
     "dev": "wrangler pages dev --port 8789",
-    "deploy": "wrangler pages deploy --branch main"
+    "deploy": "wrangler pages deploy --branch main",
+    "db:migrate:local": "wrangler d1 migrations apply badminton-tcs-db --local",
+    "db:migrate": "wrangler d1 migrations apply badminton-tcs-db --remote"
   },
   "devDependencies": {
     "wrangler": "^4.153.0"

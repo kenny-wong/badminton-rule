@@ -2,7 +2,7 @@ import { DISCIPLINES, GRADES, JUNIOR_AGE_GROUPS, SEASON, checkEligibility, grade
 import { LOCALES, currentLocale, initialLocale, setLocale, t, tParts, td } from './i18n.js';
 import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, qualificationDetail, rankGroup, shortNames } from './groups.js';
 import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, tournamentChoices, unscoredMatches } from './imported-group.js';
-import { MAX_PROFILES, addFromBadminfo, loadProfiles, newProfile, playerChanges, profileFor, saveProfiles, updateFromBadminfo } from './profiles.js';
+import { MAX_PROFILES, addFromBadminfo, loadProfiles, loadSyncOwner, mergeProfiles, newProfile, playerChanges, profileFor, sanitizeProfiles, saveProfiles, saveSyncOwner, updateFromBadminfo } from './profiles.js';
 import { renderLaws } from './laws.js';
 import { MAX_GROUPS, groupNames, loadGroups, newGroup, sanitizeState, saveGroups } from './saved-groups.js';
 
@@ -404,7 +404,120 @@ function persistProfiles() {
   const saved = saveProfiles(profiles);
   const warning = document.getElementById('save-warning');
   if (warning) warning.hidden = saved;
+  if (account.user) schedulePush();
 }
+
+// Signing in with Google is optional: it keeps the saved players on the server
+// as well, so they follow the reader to other devices. Signed out (account.user
+// null) they stay only in this browser's localStorage, as before.
+const account = { google: false, user: null, admin: false, syncError: false, loginFailed: new URLSearchParams(location.search).get('login') === 'failed' };
+let pushTimer = null;
+
+function schedulePush() {
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushProfiles, 800);
+}
+
+async function pushProfiles() {
+  if (!account.user) return;
+  try {
+    const res = await fetch('/api/players', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ players: profiles }) });
+    if (res.status === 401) Object.assign(account, { user: null, admin: false });
+    account.syncError = !res.ok && res.status !== 401;
+  } catch {
+    account.syncError = true;
+  }
+  drawAccount();
+}
+
+/**
+ * Brings the account's players into this browser. When this browser last synced
+ * with the same account, the account's list is the latest and replaces this
+ * one; on a first sign-in here, the two lists are merged and saved back.
+ */
+async function pullProfiles() {
+  try {
+    const res = await fetch('/api/players', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const { players } = await res.json();
+    if (players && loadSyncOwner() === account.user.id) profiles = sanitizeProfiles(players);
+    else {
+      profiles = mergeProfiles(sanitizeProfiles(players ?? []), profiles);
+      saveSyncOwner(account.user.id);
+      await pushProfiles();
+    }
+    saveProfiles(profiles);
+    account.syncError = false;
+  } catch {
+    account.syncError = true;
+  }
+}
+
+/** Who is signed in; then their players. Runs once at start-up and redraws the page when it changes anything. */
+async function loadAccount() {
+  try {
+    const res = await fetch('/api/me', { cache: 'no-store' });
+    if (!res.ok) return;
+    const me = await res.json();
+    Object.assign(account, { google: me.google === true, user: me.user ?? null, admin: me.admin === true });
+  } catch {
+    return; // no server (a plain static copy): players stay in this browser
+  }
+  if (account.user) await pullProfiles();
+  if (account.user || account.google) route({ focus: false });
+}
+
+async function logout() {
+  try {
+    await fetch('/api/auth/logout', { method: 'POST' });
+  } catch {
+    // signed out on this page anyway
+  }
+  Object.assign(account, { user: null, admin: false, syncError: false });
+  saveSyncOwner(null); // the players stay in this browser
+  route({ focus: false });
+}
+
+function drawAccount() {
+  const box = document.getElementById('account');
+  if (!box) return;
+  if (!account.user && !account.google) return fill(box); // sign-in isn't switched on
+  box.hidden = false;
+  if (!account.user) {
+    return fill(box,
+      h('p', {}, t('account.pitch')),
+      h('a', { class: 'small-button', href: '/api/auth/google' }, t('account.login')),
+      account.loginFailed ? h('p', { class: 'warning' }, t('account.loginFailed')) : null);
+  }
+  fill(box,
+    h('p', {}, t('account.signedIn', { email: account.user.email }), ' ',
+      h('span', { class: account.syncError ? 'sync-error' : 'muted' }, t(account.syncError ? 'account.syncError' : 'account.synced'))),
+    h('p', { class: 'account-actions' },
+      account.admin ? h('a', { href: '#/admin', class: 'small-button' }, t('account.admin')) : null,
+      h('button', { type: 'button', class: 'link-button', onclick: logout }, t('account.logout'))));
+}
+
+// The audit trail: page views and actions go to /api/events, which keeps only
+// the fields lib/audit.js allows (for players: name, source, badminfo id and
+// grades, never date of birth). It never gets in the way of the page.
+function track(action, detail = {}) {
+  try {
+    fetch('/api/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, detail }), keepalive: true }).catch(() => {});
+  } catch {
+    // no server: nothing to record
+  }
+}
+
+const playerInfo = (p) => ({ name: p.name, source: p.badminfoId ? 'link' : 'manual', badminfoId: p.badminfoId || undefined, grades: p.grades });
+
+/** A typed-in change to a player is reported once the typing stops. */
+const editTimers = new Map();
+function trackEdit(profile) {
+  clearTimeout(editTimers.get(profile.id));
+  editTimers.set(profile.id, setTimeout(() => track('player_edit', playerInfo(profile)), 3000));
+}
+
+const tournamentOf = (link) => link?.split('/').pop();
 
 function profileName(profile) {
   if (profile.name) return profile.name;
@@ -447,6 +560,7 @@ function profileActions(profile) {
       if (!confirm(t('players.confirmRemove', { name: profile.name || t('players.thisPlayer') }))) return;
       profiles = profiles.filter((x) => x.id !== profile.id);
       persistProfiles();
+      track('player_remove', playerInfo(profile));
       drawCheck();
     } }, t('players.remove')),
   ];
@@ -456,7 +570,10 @@ function profileRow(profile) {
   const linked = profile === linkedPlayer;
   const update = () => {
     if (linked) history.replaceState(null, '', shareHash(profile));
-    else persistProfiles();
+    else {
+      persistProfiles();
+      trackEdit(profile);
+    }
     renderPlayerComparison();
   };
   const label = (field) => t('players.fieldFor', { field, name: profile.name || t('players.thisPlayer') });
@@ -555,6 +672,7 @@ async function addPlayerFromLink() {
   }
   profiles = result.profiles;
   persistProfiles();
+  track(result.added ? 'player_add' : 'player_update', playerInfo(result.profile));
   playerImport.link = '';
   const name = result.profile.name || player.name;
   showPlayerImport(result.added ? t('players.badminfoAdded', { name }) : describeChanges(name, result.changes));
@@ -569,6 +687,7 @@ async function refreshRatings(profile, button) {
     const before = profiles.find((p) => p.badminfoId === player.id) ?? profile;
     profiles = updateFromBadminfo(profiles, player);
     persistProfiles();
+    track('player_update', playerInfo(profiles.find((p) => p.badminfoId === player.id) ?? profile));
     showPlayerImport(describeChanges(profile.name || player.name, playerChanges(before, player)));
   }
   drawCheck();
@@ -721,6 +840,7 @@ function drawCheck() {
     h('h2', { class: 'section-title' }, t('check.title')),
     h('p', { class: 'lede-small' }, tParts('players.lede', { strong: h('strong', {}, t('players.savedLocal')) })),
     h('p', { id: 'save-warning', class: 'warning', hidden: true }, t('players.saveWarning')),
+    h('div', { id: 'account', class: 'account-bar', hidden: true }),
     h('div', { class: 'table-scroll' },
       h('table', { class: 'data-table players-edit' },
         h('thead', {}, h('tr', {},
@@ -732,6 +852,7 @@ function drawCheck() {
     h('button', { type: 'button', class: 'button', onclick: () => {
       profiles.push(newProfile(t('players.defaultName', { n: profiles.length + 1 })));
       persistProfiles();
+      track('player_add', playerInfo(profiles.at(-1)));
       drawCheck();
       view.querySelector(`.players-edit tbody tr:nth-child(${profiles.length}) input`)?.select();
     } }, t('players.add')),
@@ -747,6 +868,7 @@ function drawCheck() {
         h('li', {}, t('check.how4')),
         h('li', {}, t('check.how5')))));
   drawPlayerImport();
+  drawAccount();
   renderPlayerComparison();
 }
 
@@ -894,6 +1016,7 @@ function saveCurrentGroup() {
   savedGroups.active = group.id;
   calc.example = null;
   persistGroups();
+  track('group_save', { group: group.alias || groupLabels().at(-1) });
   renderGroups();
 }
 
@@ -916,6 +1039,7 @@ function deleteActiveGroup() {
   savedGroups.groups = savedGroups.groups.filter((g) => g !== group);
   savedGroups.active = null;
   persistGroups();
+  track('group_delete', { group: name });
   renderGroups();
 }
 
@@ -1055,6 +1179,7 @@ async function loadTournament() {
   drawImport();
   const { tournament = null, error = null } = await fetchTournament(link);
   Object.assign(importer, { busy: false, tournament, error });
+  if (tournament) track('tournament_load', { tournament: tournament.id, name: tournament.name });
   drawImport();
 }
 
@@ -1072,6 +1197,7 @@ async function refreshTournament() {
       const { state, changed, added } = mergeResults(sanitizeState(calc), group);
       Object.assign(calc, { entries: state.entries, ids: state.ids, size: state.size, scores: state.scores, example: null });
       importer.note = [t('groups.refreshAllDone', { n: changed }), added ? t('groups.refreshAdded', { n: added }) : null].filter(Boolean).join(' ');
+      track('group_refresh', { tournament: tournament.id, group: calc.importedName || group.name });
       renderGroups();
       return;
     }
@@ -1089,6 +1215,7 @@ function importGroup(group, label) {
   applyGroupState(groupState(group, calc, { source }));
   calc.importedName = label;
   calc.paletteOpen = null;
+  track('group_import', { tournament: importer.tournament.id, group: label });
   const unscored = unscoredMatches(group);
   importer.note = [
     t('groups.importLoaded', { name: label, scoring: scoringSummary() }),
@@ -1113,6 +1240,7 @@ async function refreshMatch(i, j, button) {
   else {
     const { state, changed, found, scored } = mergeResults(sanitizeState(calc), group, `${i}-${j}`);
     if (changed) Object.assign(calc, { scores: state.scores, example: null });
+    track('match_refresh', { tournament: tournamentOf(source.link), group: calc.importedName || source.name });
     let key = 'groups.refreshMatchSame';
     if (!found) key = 'groups.refreshMatchMissing';
     else if (!scored) key = 'groups.refreshMatchNoScore';
@@ -1834,7 +1962,7 @@ function renderGroups() {
     [3, 4, 5, 6].map((n) => h('option', { value: n, selected: calc.size === n }, n)));
   // Examples keep the chosen format: each has a best-of-three and a one-game version.
   const example = (id, key) => h('button', { type: 'button', class: 'link-button example-link', 'data-example': id, 'aria-pressed': String(calc.example === id),
-    onclick: () => { savedGroups.active = null; persistGroups(); loadExample(id); renderGroups(); document.getElementById('calc-step-group')?.scrollIntoView({ block: 'start' }); } }, t(key));
+    onclick: () => { savedGroups.active = null; persistGroups(); loadExample(id); track('example_load', { example: id }); renderGroups(); document.getElementById('calc-step-group')?.scrollIntoView({ block: 'start' }); } }, t(key));
   const step = (n, id, title, ...children) => h('section', { class: 'calc-step', id, 'aria-labelledby': `${id}-title` },
     h('h4', { class: 'step-title', id: `${id}-title` }, h('span', { class: 'step-no', 'aria-hidden': 'true' }, n), title),
     children);
@@ -1928,7 +2056,56 @@ function renderNotes() {
     h('p', {}, t('notes.p1')),
     h('p', {}, t('notes.p2')),
     h('p', {}, t('notes.translations')),
-    h('p', {}, tParts('notes.p3', { link: h('a', { href: data.source, rel: 'noopener' }, t('notes.sourceLink')) }))));
+    h('p', {}, tParts('notes.p3', { link: h('a', { href: data.source, rel: 'noopener' }, t('notes.sourceLink')) })),
+    h('h2', { class: 'section-title', id: 'privacy' }, t('notes.privacyTitle')),
+    h('p', {}, t('notes.privacy1')),
+    h('p', {}, t('notes.privacy2'))));
+}
+
+// The audit trail, for the site's owners only (ADMIN_EMAILS on the server).
+async function renderAdmin(q = '') {
+  setTitle(t('admin.title'));
+  if (!document.getElementById('admin-body')) {
+    fill(view, h('h2', { class: 'section-title' }, t('admin.title')), h('div', { id: 'admin-body' }));
+  }
+  const box = document.getElementById('admin-body');
+  fill(box, h('p', { class: 'muted' }, t('admin.loading')));
+  let body;
+  try {
+    const res = await fetch(`/api/admin/audit?q=${encodeURIComponent(q)}`, { cache: 'no-store' });
+    body = await res.json();
+    if (!res.ok) throw new Error(body.error);
+  } catch {
+    return fill(box, h('p', { class: 'warning' }, t('admin.denied')));
+  }
+  const locale = currentLocale() === 'en' ? 'en-GB' : currentLocale();
+  const when = (iso) => (iso ? new Date(iso).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' }) : '');
+  const detailText = (d) => Object.entries(d).map(([k, v]) => `${k}: ${v && typeof v === 'object' ? Object.values(v).map((x) => x || '–').join('/') : v}`).join(' · ');
+  const ipLink = (ip) => h('button', { type: 'button', class: 'link-button', onclick: () => renderAdmin(ip) }, ip || '?');
+  const tt = body.totals ?? {};
+  const search = h('input', { type: 'text', id: 'admin-q', value: q, placeholder: t('admin.search'), onkeydown: (e) => { if (e.key === 'Enter') renderAdmin(e.target.value.trim()); } });
+  fill(box,
+    h('p', { class: 'admin-totals' }, t('admin.totals', { ips: tt.ips ?? 0, accounts: tt.accounts ?? 0, views: tt.views ?? 0, today: tt.viewsToday ?? 0, events: tt.events ?? 0 })),
+    h('div', { class: 'calc-controls import-form' },
+      h('label', { class: 'visually-hidden', for: 'admin-q' }, t('admin.search')), search,
+      h('button', { type: 'button', class: 'button', onclick: () => renderAdmin(search.value.trim()) }, t('admin.filter')),
+      q ? h('button', { type: 'button', class: 'link-button', onclick: () => renderAdmin('') }, t('admin.clear')) : null),
+    h('h3', { class: 'sub-title' }, q ? t('admin.eventsFor', { q }) : t('admin.events')),
+    table('admin-table', [t('admin.colTime'), t('admin.colIp'), t('admin.colAccount'), t('admin.colAction'), t('admin.colDetail')].map((c) => h('th', { scope: 'col' }, c)),
+      body.events.map((e) => h('tr', {},
+        h('td', { class: 'nowrap' }, when(e.at)), h('td', {}, ipLink(e.ip), e.country ? ` ${e.country}` : ''),
+        h('td', {}, e.email ? h('button', { type: 'button', class: 'link-button', onclick: () => renderAdmin(e.email) }, e.email) : h('span', { class: 'muted' }, t('admin.anonymous'))),
+        h('td', { class: 'nowrap' }, e.action), h('td', {}, detailText(e.detail))))),
+    q ? null : [
+      h('h3', { class: 'sub-title' }, t('admin.visitors')),
+      table('admin-table', [t('admin.colIp'), t('admin.colCountry'), t('admin.colAccount'), t('admin.colViews'), t('admin.colEvents'), t('admin.colFirst'), t('admin.colLast')].map((c) => h('th', { scope: 'col' }, c)),
+        body.visitors.map((v) => h('tr', {},
+          h('td', {}, ipLink(v.ip)), h('td', {}, v.country), h('td', {}, v.emails || h('span', { class: 'muted' }, t('admin.anonymous'))),
+          h('td', { class: 'num' }, v.views), h('td', { class: 'num' }, v.events), h('td', { class: 'nowrap' }, when(v.firstAt)), h('td', { class: 'nowrap' }, when(v.lastAt))))),
+      h('h3', { class: 'sub-title' }, t('admin.pages')),
+      table('admin-table', [t('admin.colPage'), t('admin.colViews'), t('admin.colIps')].map((c) => h('th', { scope: 'col' }, c)),
+        body.pages.map((p) => h('tr', {}, h('td', {}, p.route ?? '?'), h('td', { class: 'num' }, p.views), h('td', { class: 'num' }, p.ips)))),
+    ]);
 }
 
 // Phones get a short search placeholder, so it isn't cut off mid-phrase.
@@ -1973,12 +2150,19 @@ function route({ focus = true } = {}) {
   else if (section === 'notes') renderNotes();
   else if (section === 'groups') renderGroups();
   else if (section === 'laws') renderLaws(view, { h, fill, setTitle });
+  else if (section === 'admin') renderAdmin();
   else if (section === 'search') {
     if (searchInput.value !== param) searchInput.value = param;
     renderSearch(param);
   } else renderTier(param);
   if (focus) view.focus({ preventScroll: true });
+  // A view is counted when the reader arrives at a section, not on every redraw or search keystroke.
+  if (section !== lastViewed) {
+    lastViewed = section;
+    track('view', { route: section });
+  }
 }
+let lastViewed = null;
 
 const langSelect = document.getElementById('lang-select');
 fill(langSelect, LOCALES.map((l) => h('option', { value: l.id, lang: l.id }, l.label)));
@@ -2008,6 +2192,7 @@ try {
   tierById = new Map(data.tiers.map((t) => [t.id, t]));
   groupsByArea = buildGroups();
   route({ focus: false });
+  loadAccount();
 } catch (error) {
   fill(view, h('p', { class: 'empty' }, t('site.loadError', { error: error.message })));
 }

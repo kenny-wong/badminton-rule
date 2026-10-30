@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
-import { MAX_PROFILES, addFromBadminfo, loadProfiles, namesMatch, newProfile, playerChanges, profileFor, sanitizeProfiles, saveProfiles, updateFromBadminfo } from '../public/profiles.js';
+import { MAX_PROFILES, addFromBadminfo, loadProfiles, loadSyncOwner, mergeProfiles, namesMatch, newProfile, playerChanges, profileFor, sanitizeProfiles, saveProfiles, saveSyncOwner, updateFromBadminfo } from '../public/profiles.js';
 
 function memoryStorage() {
   const items = new Map();
@@ -163,4 +163,31 @@ describe('addFromBadminfo', () => {
     assert.equal(c.changed, false);
     assert.deepEqual(c.grades, []);
   });
+});
+
+test('mergeProfiles adds this browser’s players the account doesn’t have yet', () => {
+  const id = '11111111-2222-4333-8444-555555555555';
+  const account = [{ ...newProfile('Kim Example'), badminfoId: id }, { ...newProfile('Amy'), beNumber: '123' }];
+  const local = [
+    { ...newProfile('Kimberley'), badminfoId: id }, // same badminfo player
+    { ...newProfile('Amy L'), beNumber: '123' }, // same BE number
+    newProfile('amy'), // same name as an account player
+    newProfile('Ben'),
+  ];
+  assert.deepEqual(mergeProfiles(account, local).map((p) => p.name), ['Kim Example', 'Amy', 'Ben']);
+  const many = Array.from({ length: MAX_PROFILES }, (_, i) => newProfile(`P${i}`));
+  assert.equal(mergeProfiles(many, [newProfile('Extra')]).length, MAX_PROFILES);
+});
+
+test('the sync owner is kept per browser, and storage failures are swallowed', () => {
+  const storage = memoryStorage();
+  storage.removeItem = (k) => storage.setItem(k, 'null');
+  assert.equal(loadSyncOwner(storage), null);
+  assert.equal(saveSyncOwner('user-1', storage), true);
+  assert.equal(loadSyncOwner(storage), 'user-1');
+  saveSyncOwner(null, storage);
+  assert.equal(loadSyncOwner(storage), null);
+  const broken = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); } };
+  assert.equal(loadSyncOwner(broken), null);
+  assert.equal(saveSyncOwner('x', broken), false);
 });

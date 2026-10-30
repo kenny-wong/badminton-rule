@@ -147,3 +147,47 @@ export function addFromBadminfo(profiles, player) {
 export function updateFromBadminfo(profiles, player) {
   return profiles.map((p) => (p.badminfoId === player.id ? updated(p, player) : p));
 }
+
+const sameName = (a, b) => words(a).join(' ') === words(b).join(' ');
+
+/**
+ * One list from two: every player of `primary`, then those of `extra` that
+ * aren't already there (the same badminfo id, BE number or name). Used when a
+ * reader first signs in on a device: the account's players come first, and
+ * the ones saved only in this browser join them.
+ */
+export function mergeProfiles(primary, extra) {
+  const out = [...primary];
+  for (const p of extra) {
+    if (out.length >= MAX_PROFILES) break;
+    const dup = out.some((q) => (p.badminfoId && q.badminfoId === p.badminfoId)
+      || (p.beNumber && q.beNumber === p.beNumber)
+      || (p.name.trim() && sameName(p.name, q.name)));
+    if (!dup) out.push(p);
+  }
+  return out;
+}
+
+// Which account this browser's saved players belong to. When it is the account
+// that signs in, the account's copy is the latest; when it isn't (a first
+// sign-in here), the two lists are merged.
+const SYNC_KEY = 'badminton-tcs:sync:v1';
+
+export function loadSyncOwner(storage) {
+  try {
+    return JSON.parse((storage ?? globalThis.localStorage).getItem(SYNC_KEY) ?? 'null')?.userId ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveSyncOwner(userId, storage) {
+  try {
+    const s = storage ?? globalThis.localStorage;
+    if (userId) s.setItem(SYNC_KEY, JSON.stringify({ userId }));
+    else s.removeItem(SYNC_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}

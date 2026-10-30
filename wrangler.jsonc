@@ -2,5 +2,13 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "badminton-tcs-2026",
   "pages_build_output_dir": "./public",
-  "compatibility_date": "2026-10-01"
+  "compatibility_date": "2026-10-01",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "badminton-tcs-db",
+      "database_id": "01ab9533-cc7a-462e-ac8f-bfa1f468f097",
+      "migrations_dir": "migrations"
+    }
+  ]
 }

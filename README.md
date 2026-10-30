@@ -15,18 +15,22 @@ Available in English, 繁體中文, 日本語 and Français.
 | **Grades** | See at a glance which grades (A–K) can enter each tier, split by age group and birth year. Pick a grade to list every tier it can enter. |
 | **Tiers** | Read every rule for one tier: sanction fee, match format, rest periods, grade restrictions, seeding, coaching and so on. |
 | **Compare** | Compare one rule area across all tiers, with tiers that share the same rule grouped together. |
-| **My players** | Save players (gender, date of birth plus singles, doubles and mixed grades) and see, side by side, which tiers and age groups each can enter, and why. Add a player from their [badminfo.com](https://badminfo.com) link with their grades and badminfo ratings ("↻ Update rating" refreshes the ratings and grades later and says what changed, such as "Singles: since 30 Oct 2026, up from I to H"). |
+| **My players** | Save players (gender, date of birth plus singles, doubles and mixed grades) and see, side by side, which tiers and age groups each can enter, and why. Add a player from their [badminfo.com](https://badminfo.com) link with their grades and badminfo ratings ("↻ Update rating" refreshes the ratings and grades later and says what changed, such as "Singles: since 30 Oct 2026, up from I to H"). Optionally, sign in with Google to keep your saved players on all your devices. |
 | **Groups** | Learn how a round-robin group is ranked and how ties are broken. Then work out a group yourself: drag in saved players (singles or doubles), enter scores game by game, and get the standings, a results grid, and an analysis of what each player needs, down to "C must score at least 4 points". Save up to six groups in the browser so they are still there after a reload. Or paste a tournament link from [badminfo.com](https://badminfo.com) to fill in a real group's pairs and results: it lists the groups your saved players are in ("WS Group A (Chloe Wong)"; a player saved as just "Chloe" finds every Chloe), and ↻ buttons update one match or the whole group as new results come in. Players added from badminfo can be picked to list their tournaments (the next few, or past ones too) and open one without its link. |
 | **Laws** | The basic Laws of Badminton in plain words, from the BWF: the court, scoring, serving, where to serve from, in or out, faults, lets and breaks, with diagrams. It also shows the new 15-point scoring that starts on 4 January 2027. |
 | **Notes** | Read the general notes from the matrix and how this guide was put together. |
 
 You can also search the rules in any of the four languages.
 
-### Your data stays on your device
+### Your data and privacy
 
-Saved players, saved groups and your language choice are stored only in your browser's `localStorage`. None of them are sent to a server, and the site has no accounts or tracking. As a result, saved players don't follow you to another device or browser.
+Saved players, saved groups and your language choice are stored in your browser's `localStorage`. Without signing in, nothing else is needed: your players stay in that browser.
 
-The one exception is badminfo: a tournament or player link you paste goes to this site's server, which fetches that tournament's groups or that player's name, grades, ratings and BE number from badminfo and sends them back. Nothing is stored on the server. A player added this way keeps their badminfo id and BE number in your browser, so adding them again only updates their ratings and grades, and imported draws find them by id even if their name is spelled differently.
+**Signing in is optional.** If you sign in with Google on the My players page, your saved players are also kept on the site's server under your account (your Google email and name), so they appear on your other devices. On the first sign-in in a browser, the players already saved there join the ones in your account. Signing out leaves them in the browser.
+
+**Audit trail.** To see how the site is used and to stop misuse, the server records each page visit and action (adding, editing or removing a player, loading a tournament, importing, refreshing or saving a group, signing in and out) with the time, the visitor's IP address and country, browser, and Google email when signed in. For players it records the name, whether it came from a badminfo link or was typed in, the badminfo id and the grades, never the date of birth. Only the site's owners can see the records (the Audit trail page, for accounts listed in `ADMIN_EMAILS`), and they are kept until deleted. The Notes page explains this to visitors.
+
+**badminfo.** A tournament or player link you paste goes to this site's server, which fetches that tournament's groups or that player's name, grades, ratings and BE number from badminfo and sends them back. A player added this way keeps their badminfo id and BE number, so adding them again only updates their ratings and grades, and imported draws find them by id even if their name is spelled differently.
 
 ## Sources
 
@@ -51,12 +55,14 @@ A few things the documents don't spell out, and how the site handles them:
 
 ## Development
 
-The site is plain HTML, CSS and JavaScript modules, hosted on Cloudflare Pages. There is no build step and the site has no npm dependencies; Wrangler (Cloudflare's CLI) is the only dev dependency. The only server code is two Cloudflare Pages Functions, `functions/api/tournament.js` and `functions/api/player.js`, which read tournaments and players from badminfo; there is no database.
+The site is plain HTML, CSS and JavaScript modules, hosted on Cloudflare Pages. There is no build step and the site has no npm dependencies; Wrangler (Cloudflare's CLI) is the only dev dependency. The server code is Cloudflare Pages Functions in `functions/api/`: reading tournaments and players from badminfo, the optional Google sign-in, saved players for signed-in accounts, and the audit trail, kept in a Cloudflare D1 (SQLite) database whose schema is in `migrations/`.
 
 ```sh
 npm install       # once, to install Wrangler
 npm test          # run every test (Node's built-in test runner; needs Node 22 or later)
 npm run dev       # serve public/ and the API locally with Wrangler on port 8789, including the _headers file
+npm run db:migrate:local  # create the local D1 tables (once, and after each new migration)
+npm run db:migrate        # apply new migrations to the live database (before deploying them)
 npm run deploy    # publish public/ to Cloudflare Pages (needs access to the project)
 ```
 
@@ -80,11 +86,22 @@ public/
   data/tc-2026.*.json the rule text translated, keyed by the English sentence
   _headers            security headers (Content-Security-Policy and so on)
 functions/api/
+  _middleware.js      blocks cross-site writes; looks up the signed-in account (optional everywhere)
+  auth/               Google sign-in (auth/google, auth/google/callback) and sign-out (auth/logout)
+  me.js               who is signed in, and whether they may read the audit trail
+  players.js          GET / PUT the signed-in account's saved players
+  events.js           POST a page view or action for the audit trail (allowlisted, rate-limited)
+  admin/audit.js      the audit trail, for ADMIN_EMAILS only
   tournament.js       GET /api/tournament?url=<badminfo link>: a tournament's round-robin groups
   player.js           GET /api/player?url=<badminfo player link>: a player's grades, ratings and BE number
 lib/
   badminfo.js         reads badminfo's tournament and player JSON (only the id is taken from the link)
-  http.js             JSON responses for the API
+  http.js             JSON responses, cookies and small helpers for the API
+  audit.js            which actions and fields the audit trail keeps, and writing them
+  google.js           Google sign-in (OAuth code flow; id_token claims checked)
+  session.js          sessions: a random cookie token, only its SHA-256 stored
+  crypto.js           random tokens and hashing
+migrations/           D1 schema: users, sessions, player_lists, audit_log
 tests/                node:test suites for all of the above
 wrangler.jsonc        Cloudflare Pages project settings
 ```

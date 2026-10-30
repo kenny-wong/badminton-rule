@@ -1057,3 +1057,38 @@ input[type="date"], select {
 #player-import-status .changes { margin: 0; padding-left: 20px; }
 #player-import-status .grade-up, #player-import-status .rating-up { color: var(--yes); font-weight: 600; }
 #player-import-status .grade-down, #player-import-status .rating-down { color: var(--no); font-weight: 600; }
+
+/* The calculator in three numbered steps, divided by rules rather than nested boxes. */
+.calc-step { padding: 18px 0 6px; border-top: 1px solid var(--border); }
+.calc-step:first-of-type { border-top: 0; padding-top: 6px; }
+.step-title { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font-size: var(--fs-lg, 1.1rem); }
+.step-no {
+  display: inline-grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent); color: var(--surface); font-size: var(--fs-sm); font-weight: 700;
+}
+.import-panel .import-hint { margin: 4px 0 6px; }
+#import-player-tournaments:empty { display: none; }
+#import-tournament { max-width: min(100%, 34em); }
+.example-links { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 4px; margin: 14px 0 0; font-size: var(--fs-sm); }
+.example-links .link-button { font-size: var(--fs-sm); padding: 2px 6px; }
+.example-link[aria-pressed="true"] { font-weight: 700; text-decoration: none; background: var(--own, #fff3c4); border-radius: 6px; }
+.saved-bar { margin: 0 0 14px; padding: 10px 12px; background: var(--table-head); border-radius: var(--radius); }
+.saved-bar .palette-chips:empty { display: none; }
+.saved-bar .saved-actions { margin: 6px 0 0; }
+.saved-bar .warning { margin: 8px 0 0; }
+.scoring-more { margin: 0 0 14px; }
+.scoring-more > summary { cursor: pointer; font-size: var(--fs-sm); list-style: none; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: baseline; }
+.scoring-more > summary::-webkit-details-marker { display: none; }
+.scoring-more .scoring-label { font-weight: 650; }
+.scoring-more .preset-summary { color: var(--muted); }
+.scoring-more .scoring-change { color: var(--accent); text-decoration: underline; }
+.scoring-more[open] .scoring-change { display: none; }
+.scoring-more > .calc-controls { margin: 10px 0 0; padding: 10px 12px; border: 1px dashed var(--border); border-radius: var(--radius); }
+@media (max-width: 599px) {
+  .step-title { font-size: var(--fs-md); }
+  .saved-bar { padding: 8px 10px; }
+}
+@media (max-width: 599px) {
+  /* The tournament picker takes its own full row under the player picker, or its long names squeeze the player select to nothing. */
+  .import-player > #import-player-tournaments { grid-column: 1 / -1; }
+}

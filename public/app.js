@@ -773,6 +773,7 @@ const calc = {
   noSetting: false, // true: first to the target wins the game, even from 20 all
   preset: 'bwf', // which tournament's scoring is applied; 'custom' once changed by hand
   rulesOpen: false, // the rules part of the page starts folded
+  scoringOpen: false, // the scoring settings start folded: an import or a tournament preset sets them
   importedName: null, // the badminfo group just imported, if any: it names the group when saved
   source: null, // where an imported group came from ({ link, event, name }), so its results can be refreshed
 };
@@ -916,7 +917,7 @@ function savedGroupsPanel() {
     note = t('groups.autoSaved');
     if (full) note += `${note.endsWith('。') ? '' : ' '}${fullNote}`; // no space after a CJK full stop
   }
-  return h('div', { class: 'saved-groups' },
+  return h('div', { class: 'saved-bar' },
     h('p', { class: 'palette-title' }, t('groups.savedTitle'), ' ',
       h('span', { class: 'saved-count' }, `(${savedGroups.groups.length}/${MAX_GROUPS})`)), // slots used
     h('div', { id: 'saved-chips', class: 'palette-chips' }),
@@ -929,7 +930,7 @@ function savedGroupsPanel() {
           h('button', { type: 'button', class: 'link-button', disabled: full, onclick: startNewGroup }, t('groups.newGroup')),
           h('button', { type: 'button', class: 'link-button danger', onclick: deleteActiveGroup }, t('groups.deleteGroup')),
         ]
-        : h('button', { type: 'button', class: 'button', disabled: full, onclick: saveCurrentGroup }, t('groups.saveGroup')),
+        : h('button', { type: 'button', class: 'small-button', disabled: full, onclick: saveCurrentGroup }, t('groups.saveGroup')),
       h('span', { class: 'muted saved-note' }, note)),
     h('p', { id: 'groups-warning', class: 'warning', hidden: true }, t('players.saveWarning')));
 }
@@ -981,32 +982,30 @@ function drawPlayerTournaments() {
   if (playerPick.busy) return fill(box, h('p', { class: 'muted' }, t('groups.importPlayerLoading')));
   if (playerPick.error) return fill(box, h('p', { class: 'warning' }, t(`groups.importErr.${playerPick.error}`)));
   const { upcoming, past, pastCount } = tournamentChoices(playerPick.tournaments ?? [], todayIso(), { past: playerPick.past });
-  const chip = (tour) => h('button', {
-    type: 'button', class: 'chip-button tournament-chip', 'aria-pressed': String(importer.tournament?.id === tour.id), onclick: () => openTournament(tour),
-  }, tour.name, ' ', h('span', { class: 'muted' }, dateRange(tour.start, tour.end)));
+  const listed = [...upcoming, ...past];
+  const option = (tour) => h('option', { value: tour.id, selected: importer.tournament?.id === tour.id }, `${tour.name} · ${dateRange(tour.start, tour.end)}`);
+  const select = h('select', { id: 'import-tournament', onchange: (e) => { const tour = listed.find((x) => x.id === e.target.value); if (tour) openTournament(tour); } },
+    h('option', { value: '' }, t(listed.length ? 'groups.importPickTournament' : 'groups.importNoUpcoming')),
+    upcoming.length ? h('optgroup', { label: t('groups.importUpcoming') }, upcoming.map(option)) : null,
+    past.length ? h('optgroup', { label: t('groups.importPast') }, past.map(option)) : null);
   fill(box,
-    upcoming.length
-      ? [h('p', { class: 'muted import-pick' }, t('groups.importUpcoming')), h('div', { class: 'palette-chips' }, upcoming.map(chip))]
-      : h('p', { class: 'muted import-pick' }, t('groups.importNoUpcoming')),
+    field(t('groups.importTournament'), select),
     pastCount
-      ? h('label', { class: 'check import-past' },
+      ? h('label', { class: 'check' },
         h('input', { type: 'checkbox', checked: playerPick.past, onchange: (e) => { playerPick.past = e.target.checked; drawPlayerTournaments(); } }),
         ` ${t('groups.importShowPast', { n: pastCount })}`)
-      : null,
-    past.length ? [h('p', { class: 'muted import-pick' }, t('groups.importPast')), h('div', { class: 'palette-chips' }, past.map(chip))] : null);
+      : null);
 }
 
 function playerPicker() {
   const linked = profiles.filter((p) => p.badminfoId);
-  if (!linked.length) return h('p', { class: 'muted import-hint' }, t('groups.importPlayerHint'));
+  if (!linked.length) return null;
   if (!linked.some((p) => p.id === playerPick.id)) Object.assign(playerPick, { id: '', tournaments: null, error: null });
-  return [
-    h('div', { class: 'calc-controls calc-fields import-player' },
-      field(t('groups.importPlayer'), h('select', { id: 'import-player', onchange: (e) => pickImportPlayer(e.target.value) },
-        h('option', { value: '' }, t('groups.importPlayerNone')),
-        linked.map((p) => h('option', { value: p.id, selected: p.id === playerPick.id }, p.name || t('players.unnamed')))))),
-    h('div', { id: 'import-player-tournaments', 'aria-live': 'polite' }),
-  ];
+  return h('div', { class: 'calc-controls calc-fields import-player' },
+    field(t('groups.importPlayer'), h('select', { id: 'import-player', onchange: (e) => pickImportPlayer(e.target.value) },
+      h('option', { value: '' }, t('groups.importPlayerNone')),
+      linked.map((p) => h('option', { value: p.id, selected: p.id === playerPick.id }, p.name || t('players.unnamed'))))),
+    h('span', { id: 'import-player-tournaments', class: 'calc-controls calc-fields', 'aria-live': 'polite' }));
 }
 
 /** { tournament } or { error }. Asks past the browser's cache, so a refresh gets the latest. */
@@ -1074,7 +1073,7 @@ function importGroup(group, label) {
   ].filter(Boolean).join(' ');
   importer.rowStatus = null;
   renderGroups();
-  document.getElementById('calc-inputs')?.scrollIntoView({ block: 'start' });
+  document.getElementById('calc-step-group')?.scrollIntoView({ block: 'start' });
 }
 
 /** The ↻ on a match's row: updates that match's score only, from badminfo's latest results. */
@@ -1175,10 +1174,10 @@ function importPanel() {
     oninput: (e) => { importer.link = e.target.value; },
     onkeydown: (e) => { if (e.key === 'Enter') loadTournament(); },
   });
-  return h('div', { class: 'saved-groups import-panel' },
-    h('p', { class: 'palette-title' }, t('groups.importTitle')),
-    playerPicker(),
-    h('p', { class: 'muted import-hint' }, t('groups.importHint')),
+  const picker = playerPicker();
+  return h('div', { class: 'import-panel' },
+    picker,
+    h('p', { class: 'muted import-hint' }, t(picker ? 'groups.importOrLink' : 'groups.importHint')),
     h('div', { class: 'calc-controls import-form' },
       h('label', { class: 'visually-hidden', for: 'import-link' }, t('groups.importLabel')),
       input,
@@ -1186,7 +1185,7 @@ function importPanel() {
       h('button', { type: 'button', id: 'import-refresh', class: 'button icon-button', title: t('groups.importRefresh'), 'aria-label': t('groups.importRefresh'),
         hidden: !importer.tournament && !calc.source, onclick: refreshTournament }, '↻')),
     h('div', { id: 'import-result', 'aria-live': 'polite' }),
-    h('p', { class: 'muted import-source' }, t('groups.importSource')));
+    picker ? null : h('p', { class: 'muted import-note' }, t('groups.importPlayerHint')));
 }
 
 function signed(n) {
@@ -1402,7 +1401,7 @@ function clearRowButton(i, j) {
 
 /** Shows which example (if any) is on screen without redrawing the form. */
 function markExample() {
-  document.querySelectorAll('.chip-button[data-example]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.example === calc.example)));
+  document.querySelectorAll('[data-example]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.example === calc.example)));
 }
 
 function drawGroupInputs() {
@@ -1676,7 +1675,6 @@ function drawGroupResult() {
   const result = rankGroup(calcPlayers(), calcMatches(), calc.format, { rules: scoringRules() });
   const bestOf3 = calc.format === 'bestOf3';
   fill(box,
-    crossTable(result),
     h('h4', {}, t('groups.standings')),
     calcPlayers().some((_, i) => isOwnEntry(i)) ? h('p', { class: 'muted own-hint' }, h('span', { class: 'own-swatch', 'aria-hidden': 'true' }), t('groups.ownHint')) : null,
     result.unfinished ? h('p', { class: 'muted' }, result.unfinished === 1 ? t('groups.unfinishedOne') : t('groups.unfinishedMany', { n: result.unfinished })) : null,
@@ -1704,6 +1702,7 @@ function drawGroupResult() {
         h('td', { class: 'num group-start' }, s.pointsWon), h('td', { class: 'num' }, s.pointsLost),
         h('td', { class: 'num diff' }, signed(s.pointsWon - s.pointsLost)),
         h('td', { class: 'group-start' }, h('span', { class: `by by-${s.by}` }, t(`by.${s.by}`)))))))),
+    crossTable(result),
     h('h4', {}, t('groups.how')),
     h('ol', { class: 'calc-steps' }, result.steps.map((step) => h('li', {}, sayGroupStep(step)))),
     outlookPanel());
@@ -1788,8 +1787,13 @@ function renderGroups() {
   const sizeSelect = h('select', { id: 'calc-size', onchange: (e) => { calc.size = Number(e.target.value); calc.example = null; markExample(); drawGroupInputs(); drawGroupResult(); } },
     [3, 4, 5, 6].map((n) => h('option', { value: n, selected: calc.size === n }, n)));
   // Examples keep the chosen format: each has a best-of-three and a one-game version.
-  const example = (id, key) => h('button', { type: 'button', class: 'chip-button', 'data-example': id, 'aria-pressed': String(calc.example === id),
-    onclick: () => { savedGroups.active = null; persistGroups(); loadExample(id); renderGroups(); document.getElementById('calc')?.scrollIntoView({ block: 'start' }); } }, t(key));
+  const example = (id, key) => h('button', { type: 'button', class: 'link-button example-link', 'data-example': id, 'aria-pressed': String(calc.example === id),
+    onclick: () => { savedGroups.active = null; persistGroups(); loadExample(id); renderGroups(); document.getElementById('calc-step-group')?.scrollIntoView({ block: 'start' }); } }, t(key));
+  const step = (n, id, title, ...children) => h('section', { class: 'calc-step', id, 'aria-labelledby': `${id}-title` },
+    h('h4', { class: 'step-title', id: `${id}-title` }, h('span', { class: 'step-no', 'aria-hidden': 'true' }, n), title),
+    children);
+  const scoringPart = view.querySelector('details.scoring-more');
+  if (scoringPart) calc.scoringOpen = scoringPart.open;
 
   // Two parts: 1. the rules, folded away by default (and kept as the reader left
   // them when the page redraws), and 2. the calculator, always open. The toggle
@@ -1820,32 +1824,42 @@ function renderGroups() {
     h('section', { class: 'groups-part calc', id: 'calc', 'aria-labelledby': 'calc-title' },
       h('div', { class: 'part-head' }, h('h3', { class: 'part-title', id: 'calc-title' }, `2. ${t('groups.calcTitle')}`)),
       h('p', { class: 'lede-small' }, t('groups.calcLede')),
-      savedGroupsPanel(),
-      importPanel(),
-      h('div', { class: 'calc-controls' },
-        h('span', { class: 'muted' }, t('groups.examples')),
-        example('two', 'groups.exTwo'), example('circle', 'groups.exCircle'),
-        example('points', 'groups.exPoints')),
-      h('div', { class: 'calc-controls calc-fields preset-row' },
-        field(t('groups.preset'), presetSelect),
-        h('span', { id: 'preset-summary', class: 'muted preset-summary' }, scoringSummary())),
-      h('div', { class: 'calc-controls calc-fields' },
-        field(t('groups.event'), eventSelect),
-        field(t('groups.format'), formatSelect),
-        field(t('groups.size'), sizeSelect),
-        field(t('groups.gamePoints'), pointsSelect),
-        h('label', { class: 'check', title: t('groups.noSettingHint', { deuce: `${calc.gamePoints - 1}–${calc.gamePoints - 1}` }) },
-          h('input', { type: 'checkbox', id: 'calc-nosetting', checked: calc.noSetting,
-            onchange: (e) => { calc.noSetting = e.target.checked; markCustom(); markWinners(); drawGroupResult(); } }),
-          ` ${t('groups.noSetting')}`)),
-      h('div', { id: 'calc-inputs' }),
-      h('div', { id: 'calc-result', 'aria-live': 'polite' })),
+      // 1. Where the group comes from: a badminfo tournament, or an example.
+      step('1', 'calc-step-source', t('groups.stepSource'),
+        importPanel(),
+        h('p', { class: 'example-links' },
+          h('span', { class: 'muted' }, t('groups.examples')), ' ',
+          example('two', 'groups.exTwo'), example('circle', 'groups.exCircle'), example('points', 'groups.exPoints'))),
+      // 2. The group itself: saving, who plays, scoring (folded: an import works it out) and the scores.
+      step('2', 'calc-step-group', t('groups.stepGroup'),
+        savedGroupsPanel(),
+        h('div', { class: 'calc-controls calc-fields' },
+          field(t('groups.event'), eventSelect),
+          field(t('groups.size'), sizeSelect)),
+        h('details', { class: 'scoring-more', open: calc.scoringOpen, ontoggle: (e) => { calc.scoringOpen = e.target.open; } },
+          h('summary', {},
+            h('span', { class: 'scoring-label' }, t('groups.scoring')), ' ',
+            h('span', { id: 'preset-summary', class: 'preset-summary' }, scoringSummary()), ' ',
+            h('span', { class: 'scoring-change' }, t('groups.changeScoring'))),
+          h('div', { class: 'calc-controls calc-fields' },
+            field(t('groups.preset'), presetSelect),
+            field(t('groups.format'), formatSelect),
+            field(t('groups.gamePoints'), pointsSelect),
+            h('label', { class: 'check', title: t('groups.noSettingHint', { deuce: `${calc.gamePoints - 1}–${calc.gamePoints - 1}` }) },
+              h('input', { type: 'checkbox', id: 'calc-nosetting', checked: calc.noSetting,
+                onchange: (e) => { calc.noSetting = e.target.checked; markCustom(); markWinners(); drawGroupResult(); } }),
+              ` ${t('groups.noSetting')}`))),
+        h('div', { id: 'calc-inputs' })),
+      // 3. The answer.
+      step('3', 'calc-step-result', t('groups.stepResult'),
+        h('div', { id: 'calc-result', 'aria-live': 'polite' }))),
     h('section', { class: 'sources' },
       h('h4', {}, t('groups.sourcesTitle')),
       h('ul', {},
         h('li', {}, h('a', { href: 'https://images.gc.badmintonenglandservices.co.uk/53012730-1ee3-11f1-a060-b1b720430faa.pdf', rel: 'noopener' }, t('groups.source1'))),
         h('li', {}, h('a', { href: 'https://www.badminton.org.au/wp-content/uploads/2024/01/Section-5.1-General-Competition-Regulations-11-November-2023-V4.0-1.pdf', rel: 'noopener' }, t('groups.source2')))),
-      h('p', { class: 'muted' }, t('groups.sourceNote'))));
+      h('p', { class: 'muted' }, t('groups.sourceNote')),
+      h('p', { class: 'muted' }, t('groups.importSource'))));
   drawSavedChips();
   drawImport();
   drawGroupInputs();

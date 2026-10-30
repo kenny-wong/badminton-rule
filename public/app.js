@@ -1,6 +1,7 @@
 import { DISCIPLINES, GRADES, JUNIOR_AGE_GROUPS, SEASON, checkEligibility, gradeChartRows, juniorAgeGroup, parseDate } from './eligibility.js';
 import { LOCALES, currentLocale, initialLocale, setLocale, t, tParts, td } from './i18n.js';
 import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, qualificationDetail, rankGroup } from './groups.js';
+import { fitsCalculator, groupState, unscoredMatches } from './imported-group.js';
 import { loadProfiles, newProfile, saveProfiles } from './profiles.js';
 import { renderLaws } from './laws.js';
 import { MAX_GROUPS, groupNames, loadGroups, newGroup, sanitizeState, saveGroups } from './saved-groups.js';
@@ -655,6 +656,7 @@ const calc = {
   noSetting: false, // true: first to the target wins the game, even from 20 all
   preset: 'bwf', // which tournament's scoring is applied; 'custom' once changed by hand
   rulesOpen: false, // the rules part of the page starts folded
+  importedName: null, // the badminfo group on screen, if any: it names the group when saved
 };
 
 /** Saved players' names: entries holding any of them count as the reader's own. */
@@ -685,6 +687,7 @@ function entryLabel(i) {
 /** Loads an example's scores; names already placed in the group stay put. */
 function loadExample(id) {
   calc.example = id;
+  calc.importedName = null;
   calc.size = 4;
   calc.withdrew = GROUP_LETTERS.map(() => false);
   calc.scores = exampleScores(id, calc.format, calc.gamePoints); // in the chosen points per game
@@ -697,7 +700,7 @@ let savedGroups = loadGroups();
 
 /** Puts a saved group's names, scores and settings into the calculator. */
 function applyGroupState(state) {
-  Object.assign(calc, sanitizeState(state), { example: null, picked: null, outlook: { entry: null, places: 1 } });
+  Object.assign(calc, sanitizeState(state), { example: null, picked: null, importedName: null, outlook: { entry: null, places: 1 } });
 }
 
 function activeGroup() {
@@ -747,6 +750,7 @@ function openSavedGroup(id) {
 function saveCurrentGroup() {
   if (savedGroups.groups.length >= MAX_GROUPS) return;
   const group = newGroup(calc);
+  if (calc.importedName) group.alias = calc.importedName.slice(0, 40);
   savedGroups.groups.push(group);
   savedGroups.active = group.id;
   calc.example = null;
@@ -759,7 +763,7 @@ function startNewGroup() {
   savedGroups.active = null;
   persistGroups();
   Object.assign(calc, {
-    example: null, picked: null, size: 4, scores: {}, outlook: { entry: null, places: 1 },
+    example: null, picked: null, importedName: null, size: 4, scores: {}, outlook: { entry: null, places: 1 },
     entries: GROUP_LETTERS.map(() => ['', '']), withdrew: GROUP_LETTERS.map(() => false),
   });
   renderGroups();
@@ -812,6 +816,100 @@ function savedGroupsPanel() {
         : h('button', { type: 'button', class: 'button', disabled: full, onclick: saveCurrentGroup }, t('groups.saveGroup')),
       h('span', { class: 'muted saved-note' }, note)),
     h('p', { id: 'groups-warning', class: 'warning', hidden: true }, t('players.saveWarning')));
+}
+
+// Importing a group from badminfo.com. /api/tournament fetches the tournament
+// on the server (badminfo's API only answers its own pages) and lists its
+// round-robin groups; picking one fills the calculator as a new, unsaved group.
+const importer = { link: '', busy: false, error: null, tournament: null, loaded: null };
+
+async function loadTournament() {
+  const link = importer.link.trim();
+  if (!link) return;
+  Object.assign(importer, { busy: true, error: null, tournament: null, loaded: null });
+  drawImport();
+  try {
+    const res = await fetch(`/api/tournament?url=${encodeURIComponent(link)}`);
+    const body = await res.json().catch(() => ({}));
+    if (res.ok && Array.isArray(body.groups)) importer.tournament = body;
+    else importer.error = ['badLink', 'notFound'].includes(body.error) ? body.error : 'unavailable';
+  } catch {
+    importer.error = 'unavailable';
+  }
+  importer.busy = false;
+  drawImport();
+}
+
+function importGroup(group) {
+  if (!activeGroup() && hasUnsavedWork() && !confirm(t('groups.confirmSwitch'))) return;
+  savedGroups.active = null;
+  persistGroups();
+  applyGroupState(groupState(group, calc));
+  calc.importedName = group.name;
+  importer.loaded = { name: group.name, unscored: unscoredMatches(group) };
+  renderGroups();
+  document.getElementById('calc-inputs')?.scrollIntoView({ block: 'start' });
+}
+
+/** "25 Oct 2026 – 18 Apr 2027", in the page's language (British order in English). */
+function dateRange(start, end) {
+  const locale = currentLocale() === 'en' ? 'en-GB' : currentLocale();
+  const format = (d) => new Date(`${d}T00:00:00Z`).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  if (!start) return '';
+  return end && end !== start ? `${format(start)} – ${format(end)}` : format(start);
+}
+
+function drawImport() {
+  const box = document.getElementById('import-result');
+  if (!box) return;
+  const tour = importer.tournament;
+  const button = document.getElementById('import-load');
+  if (button) button.disabled = importer.busy;
+  let content = null;
+  if (importer.busy) content = h('p', { class: 'muted' }, t('groups.importLoading'));
+  else if (importer.error) content = h('p', { class: 'warning', role: 'alert' }, t(`groups.importErr.${importer.error}`));
+  else if (tour) {
+    const tooBig = tour.groups.some((g) => !fitsCalculator(g));
+    const loaded = importer.loaded;
+    content = [
+      h('p', { class: 'import-tournament' },
+        h('a', { href: tour.url, rel: 'noopener', target: '_blank' }, tour.name || tour.url), ' ',
+        h('span', { class: 'muted' }, dateRange(tour.start, tour.end))),
+      tour.groups.length
+        ? [
+          h('p', { class: 'muted import-pick' }, t('groups.importPick')),
+          h('div', { class: 'palette-chips' }, tour.groups.map((g) => h('button', {
+            type: 'button', class: 'chip-button', disabled: !fitsCalculator(g), 'aria-pressed': String(loaded?.name === g.name && calc.importedName === g.name),
+            onclick: () => importGroup(g),
+          }, g.name, ' ', h('span', { class: 'muted' }, `(${g.teams.length})`)))),
+          tooBig ? h('p', { class: 'muted import-note' }, t('groups.importSizeNote')) : null,
+        ]
+        : h('p', { class: 'muted' }, t('groups.importNone')),
+      loaded && calc.importedName === loaded.name
+        ? h('p', { class: 'import-note' }, t('groups.importLoaded', { name: loaded.name, scoring: scoringSummary() }),
+          loaded.unscored ? [' ', loaded.unscored === 1 ? t('groups.importUnscoredOne') : t('groups.importUnscoredMany', { n: loaded.unscored })] : null)
+        : null,
+    ];
+  }
+  fill(box, content);
+}
+
+function importPanel() {
+  const input = h('input', {
+    type: 'text', id: 'import-link', inputmode: 'url', autocomplete: 'off', spellcheck: 'false', value: importer.link,
+    placeholder: 'https://badminfo.com/Tournament/…',
+    oninput: (e) => { importer.link = e.target.value; },
+    onkeydown: (e) => { if (e.key === 'Enter') loadTournament(); },
+  });
+  return h('div', { class: 'saved-groups import-panel' },
+    h('p', { class: 'palette-title' }, t('groups.importTitle')),
+    h('p', { class: 'muted import-hint' }, t('groups.importHint')),
+    h('div', { class: 'calc-controls import-form' },
+      h('label', { class: 'visually-hidden', for: 'import-link' }, t('groups.importLabel')),
+      input,
+      h('button', { type: 'button', id: 'import-load', class: 'button', onclick: loadTournament }, t('groups.importButton'))),
+    h('div', { id: 'import-result', 'aria-live': 'polite' }),
+    h('p', { class: 'muted import-source' }, t('groups.importSource')));
 }
 
 function signed(n) {
@@ -1440,6 +1538,7 @@ function renderGroups() {
       h('div', { class: 'part-head' }, h('h3', { class: 'part-title', id: 'calc-title' }, `2. ${t('groups.calcTitle')}`)),
       h('p', { class: 'lede-small' }, t('groups.calcLede')),
       savedGroupsPanel(),
+      importPanel(),
       h('div', { class: 'calc-controls' },
         h('span', { class: 'muted' }, t('groups.examples')),
         example('two', 'groups.exTwo'), example('circle', 'groups.exCircle'),
@@ -1465,6 +1564,7 @@ function renderGroups() {
         h('li', {}, h('a', { href: 'https://www.badminton.org.au/wp-content/uploads/2024/01/Section-5.1-General-Competition-Regulations-11-November-2023-V4.0-1.pdf', rel: 'noopener' }, t('groups.source2')))),
       h('p', { class: 'muted' }, t('groups.sourceNote'))));
   drawSavedChips();
+  drawImport();
   drawGroupInputs();
   drawGroupResult();
 }

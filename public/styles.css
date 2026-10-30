@@ -1012,3 +1012,17 @@ input[type="date"], select {
   .area-chips, .area-chips-label { display: none; }
   .area-select { display: grid; gap: 4px; margin-bottom: 18px; }
 }
+
+/* Importing a group from badminfo.com. */
+.import-hint, .import-source { margin: 0 0 8px; font-size: var(--fs-sm); }
+.import-source { margin: 10px 0 0; font-size: var(--fs-xs); }
+.import-form { flex-wrap: nowrap; margin: 0 0 8px; }
+.import-form input { flex: 1 1 auto; min-width: 0; max-width: 32em; }
+.import-form .button { flex: none; white-space: nowrap; }
+.import-tournament { margin: 4px 0 6px; font-weight: 600; }
+.import-tournament .muted { font-weight: 400; font-size: var(--fs-sm); }
+.import-pick { margin: 0 0 6px; font-size: var(--fs-sm); }
+.import-note { margin: 8px 0 0; font-size: var(--fs-sm); }
+.import-panel .chip-button:disabled { opacity: 0.45; cursor: not-allowed; }
+.import-panel .chip-button[aria-pressed="true"] .muted { color: inherit; font-weight: 400; }
+.import-panel .warning { margin: 4px 0 0; }

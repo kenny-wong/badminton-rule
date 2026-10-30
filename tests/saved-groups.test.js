@@ -34,6 +34,15 @@ test('sanitizeState keeps good values and drops bad ones', () => {
   assert.deepEqual(s.scores, { '0-1': [[21, 15], null, [null, null]] });
 });
 
+test('sanitizeState keeps an imported group’s source only when it is a badminfo link', () => {
+  const source = { link: 'https://badminfo.com/Tournament/x', event: 'WS Open', name: 'Group A' };
+  assert.deepEqual(sanitizeState({ source }).source, source);
+  assert.equal(sanitizeState({}).source, null);
+  assert.equal(sanitizeState({ source: { ...source, link: 'https://evil.example/' } }).source, null);
+  assert.equal(sanitizeState({ source: { ...source, name: '' } }).source, null);
+  assert.equal(sanitizeState({ source: { ...source, event: 5 } }).source, null);
+});
+
 test('sanitizeStore caps the number of groups and forgets an unknown active group', () => {
   const groups = Array.from({ length: 9 }, (_, i) => ({ id: `g${i}`, alias: 'x', state: {} }));
   const store = sanitizeStore({ active: 'g8', groups });

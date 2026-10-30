@@ -20,6 +20,13 @@ export function newGroup(state) {
 
 const score = (v) => (Number.isInteger(v) && v >= 0 && v <= 99 ? v : null);
 
+/** Where an imported group came from (badminfo's tournament page and the draw), so its results can be refreshed. */
+function sanitizeSource(raw) {
+  const text = (v, max) => typeof v === 'string' && v.length <= max;
+  if (!raw || typeof raw !== 'object' || !text(raw.link, 300) || !/^https:\/\/badminfo\.com\//.test(raw.link)) return null;
+  return text(raw.event, 60) && text(raw.name, 60) && raw.name ? { link: raw.link, event: raw.event, name: raw.name } : null;
+}
+
 /** Keeps only well-formed calculator state, so a hand-edited or stale entry can't break the page. */
 export function sanitizeState(raw) {
   const s = raw && typeof raw === 'object' ? raw : {};
@@ -44,6 +51,7 @@ export function sanitizeState(raw) {
     })),
     withdrew: Array.from({ length: SLOTS }, (_, i) => s.withdrew?.[i] === true),
     scores,
+    source: sanitizeSource(s.source),
   };
 }
 

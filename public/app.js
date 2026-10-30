@@ -1,7 +1,7 @@
 import { DISCIPLINES, GRADES, JUNIOR_AGE_GROUPS, SEASON, checkEligibility, gradeChartRows, juniorAgeGroup, parseDate } from './eligibility.js';
 import { LOCALES, currentLocale, initialLocale, setLocale, t, tParts, td } from './i18n.js';
 import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, qualificationDetail, rankGroup } from './groups.js';
-import { fitsCalculator, groupState, importLabels, unscoredMatches } from './imported-group.js';
+import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, unscoredMatches } from './imported-group.js';
 import { loadProfiles, newProfile, saveProfiles } from './profiles.js';
 import { renderLaws } from './laws.js';
 import { MAX_GROUPS, groupNames, loadGroups, newGroup, sanitizeState, saveGroups } from './saved-groups.js';
@@ -656,7 +656,8 @@ const calc = {
   noSetting: false, // true: first to the target wins the game, even from 20 all
   preset: 'bwf', // which tournament's scoring is applied; 'custom' once changed by hand
   rulesOpen: false, // the rules part of the page starts folded
-  importedName: null, // the badminfo group on screen, if any: it names the group when saved
+  importedName: null, // the badminfo group just imported, if any: it names the group when saved
+  source: null, // where an imported group came from ({ link, event, name }), so its results can be refreshed
 };
 
 /** Saved players' names: entries holding any of them count as the reader's own. */
@@ -688,6 +689,7 @@ function entryLabel(i) {
 function loadExample(id) {
   calc.example = id;
   calc.importedName = null;
+  calc.source = null;
   calc.size = 4;
   calc.withdrew = GROUP_LETTERS.map(() => false);
   calc.scores = exampleScores(id, calc.format, calc.gamePoints); // in the chosen points per game
@@ -763,7 +765,7 @@ function startNewGroup() {
   savedGroups.active = null;
   persistGroups();
   Object.assign(calc, {
-    example: null, picked: null, importedName: null, size: 4, scores: {}, outlook: { entry: null, places: 1 },
+    example: null, picked: null, importedName: null, source: null, size: 4, scores: {}, outlook: { entry: null, places: 1 },
     entries: GROUP_LETTERS.map(() => ['', '']), withdrew: GROUP_LETTERS.map(() => false),
   });
   renderGroups();
@@ -820,36 +822,111 @@ function savedGroupsPanel() {
 
 // Importing a group from badminfo.com. /api/tournament fetches the tournament
 // on the server (badminfo's API only answers its own pages) and lists its
-// round-robin groups; picking one fills the calculator as a new, unsaved group.
-const importer = { link: '', busy: false, error: null, tournament: null, loaded: null };
+// round-robin groups, by default only those with the reader's saved players.
+// Picking one fills the calculator as a new, unsaved group that remembers where
+// it came from (calc.source, kept when saved), so its results can be refreshed:
+// all of them with the button beside the link, or one match from its row.
+const importer = { link: '', busy: false, error: null, tournament: null, showAll: false, note: null, rowStatus: null };
+
+/** { tournament } or { error }. Asks past the browser's cache, so a refresh gets the latest. */
+async function fetchTournament(link) {
+  try {
+    const res = await fetch(`/api/tournament?url=${encodeURIComponent(link)}`, { cache: 'no-cache' });
+    const body = await res.json().catch(() => ({}));
+    if (res.ok && Array.isArray(body.groups)) return { tournament: body };
+    return { error: ['badLink', 'notFound'].includes(body.error) ? body.error : 'unavailable' };
+  } catch {
+    return { error: 'unavailable' };
+  }
+}
+
+const savedNames = () => profiles.map((p) => p.name);
+
+/** Whether the calculator holds this group of the loaded tournament. */
+function isOpenGroup(group) {
+  const s = calc.source;
+  return Boolean(s && s.link === importer.tournament?.url && s.event === group.event && s.name === group.name);
+}
 
 async function loadTournament() {
   const link = importer.link.trim();
   if (!link) return;
-  Object.assign(importer, { busy: true, error: null, tournament: null, loaded: null });
+  Object.assign(importer, { busy: true, error: null, tournament: null, note: null });
   drawImport();
-  try {
-    const res = await fetch(`/api/tournament?url=${encodeURIComponent(link)}`);
-    const body = await res.json().catch(() => ({}));
-    if (res.ok && Array.isArray(body.groups)) importer.tournament = body;
-    else importer.error = ['badLink', 'notFound'].includes(body.error) ? body.error : 'unavailable';
-  } catch {
-    importer.error = 'unavailable';
-  }
-  importer.busy = false;
+  const { tournament = null, error = null } = await fetchTournament(link);
+  Object.assign(importer, { busy: false, tournament, error });
   drawImport();
 }
 
-/** `label` tells the group apart from same-named groups in other events; it names the group when saved. */
-function importGroup(group, index, label) {
+/** The button beside the link: reloads the list of groups, and brings the open group's results up to date. */
+async function refreshTournament() {
+  const link = importer.link.trim() || calc.source?.link;
+  if (!link) return;
+  Object.assign(importer, { link, busy: true, note: null, rowStatus: null });
+  drawImport();
+  const { tournament = null, error = null } = await fetchTournament(link);
+  Object.assign(importer, { busy: false, error, tournament: tournament ?? importer.tournament });
+  if (tournament && calc.source?.link === tournament.url) {
+    const group = findGroup(tournament, calc.source);
+    if (group) {
+      const { state, changed, added } = mergeResults(sanitizeState(calc), group);
+      Object.assign(calc, { entries: state.entries, size: state.size, scores: state.scores, example: null });
+      importer.note = [t('groups.refreshAllDone', { n: changed }), added ? t('groups.refreshAdded', { n: added }) : null].filter(Boolean).join(' ');
+      renderGroups();
+      return;
+    }
+    importer.note = t('groups.refreshGroupGone');
+  }
+  drawImport();
+}
+
+/** `label` is the name on the group's button; it names the group when saved. */
+function importGroup(group, label) {
   if (!activeGroup() && hasUnsavedWork() && !confirm(t('groups.confirmSwitch'))) return;
   savedGroups.active = null;
   persistGroups();
-  applyGroupState(groupState(group, calc));
+  const source = { link: importer.tournament.url, event: group.event, name: group.name };
+  applyGroupState(groupState(group, calc, { savedNames: savedNames(), source }));
   calc.importedName = label;
-  importer.loaded = { index, name: label, unscored: unscoredMatches(group) };
+  const unscored = unscoredMatches(group);
+  importer.note = [
+    t('groups.importLoaded', { name: label, scoring: scoringSummary() }),
+    unscored ? (unscored === 1 ? t('groups.importUnscoredOne') : t('groups.importUnscoredMany', { n: unscored })) : null,
+  ].filter(Boolean).join(' ');
+  importer.rowStatus = null;
   renderGroups();
   document.getElementById('calc-inputs')?.scrollIntoView({ block: 'start' });
+}
+
+/** The ↻ on a match's row: updates that match's score only, from badminfo's latest results. */
+async function refreshMatch(i, j, button) {
+  const source = calc.source;
+  const players = calcPlayers();
+  const names = { a: players[i].name, b: players[j].name };
+  button.disabled = true;
+  const { tournament, error } = await fetchTournament(source.link);
+  if (calc.source !== source) return; // another group was opened meanwhile
+  const group = tournament && findGroup(tournament, source);
+  if (error) importer.rowStatus = t(`groups.importErr.${error}`);
+  else if (!group) importer.rowStatus = t('groups.refreshGroupGone');
+  else {
+    const { state, changed, found, scored } = mergeResults(sanitizeState(calc), group, `${i}-${j}`);
+    if (changed) Object.assign(calc, { scores: state.scores, example: null });
+    let key = 'groups.refreshMatchSame';
+    if (!found) key = 'groups.refreshMatchMissing';
+    else if (!scored) key = 'groups.refreshMatchNoScore';
+    else if (changed) key = 'groups.refreshMatchDone';
+    importer.rowStatus = t(key, names);
+  }
+  drawGroupInputs();
+  drawGroupResult();
+}
+
+function refreshRowButton(i, j) {
+  const players = calcPlayers();
+  const label = t('groups.refreshMatch', { a: players[i].name, b: players[j].name });
+  return h('button', { type: 'button', class: 'link-button row-refresh', title: label, 'aria-label': label,
+    onclick: (e) => refreshMatch(i, j, e.currentTarget) }, '↻');
 }
 
 /** "25 Oct 2026 – 18 Apr 2027", in the page's language (British order in English). */
@@ -860,44 +937,59 @@ function dateRange(start, end) {
   return end && end !== start ? `${format(start)} – ${format(end)}` : format(start);
 }
 
+/** The group buttons, "WS Group A (Amy)": by default only groups with the reader's saved players. */
+function importChoices(tour) {
+  const labels = importLabels(tour.groups);
+  const names = savedNames();
+  const hasSaved = names.some((n) => n.trim());
+  const mine = tour.groups.map((g) => [...new Set(savedPlayersIn(g, names))]);
+  const filtering = hasSaved && !importer.showAll;
+  const shown = tour.groups.flatMap((g, i) => (!filtering || mine[i].length ? [i] : []));
+  const label = (i) => (mine[i].length ? `${labels[i]} (${mine[i].join(', ')})` : labels[i]);
+  return [
+    shown.length ? h('p', { class: 'muted import-pick' }, t(filtering ? 'groups.importPickMine' : 'groups.importPick')) : null,
+    shown.length
+      ? h('div', { class: 'palette-chips' }, shown.map((i) => h('button', {
+        type: 'button', class: 'chip-button', disabled: !fitsCalculator(tour.groups[i]), 'aria-pressed': String(isOpenGroup(tour.groups[i])),
+        onclick: () => importGroup(tour.groups[i], label(i)),
+      }, label(i))))
+      : h('p', { class: 'muted' }, t('groups.importNoneMine')),
+    shown.some((i) => !fitsCalculator(tour.groups[i])) ? h('p', { class: 'muted import-note' }, t('groups.importSizeNote')) : null,
+    hasSaved
+      ? h('button', { type: 'button', class: 'link-button import-toggle', onclick: () => { importer.showAll = !importer.showAll; drawImport(); } },
+        importer.showAll ? t('groups.importShowMine') : t('groups.importShowAll', { n: tour.groups.length }))
+      : h('p', { class: 'muted import-note' }, t('groups.importNoPlayers')),
+  ];
+}
+
 function drawImport() {
   const box = document.getElementById('import-result');
   if (!box) return;
   const tour = importer.tournament;
-  const button = document.getElementById('import-load');
-  if (button) button.disabled = importer.busy;
+  for (const id of ['import-load', 'import-refresh']) {
+    const button = document.getElementById(id);
+    if (button) button.disabled = importer.busy;
+  }
+  const refresh = document.getElementById('import-refresh');
+  if (refresh) refresh.hidden = !tour && !calc.source;
   let content = null;
   if (importer.busy) content = h('p', { class: 'muted' }, t('groups.importLoading'));
   else if (importer.error) content = h('p', { class: 'warning', role: 'alert' }, t(`groups.importErr.${importer.error}`));
   else if (tour) {
-    const tooBig = tour.groups.some((g) => !fitsCalculator(g));
-    // Still on screen only while the calculator holds the imported group.
-    const loaded = importer.loaded && calc.importedName === importer.loaded.name ? importer.loaded : null;
-    const labels = importLabels(tour.groups);
     content = [
       h('p', { class: 'import-tournament' },
         h('a', { href: tour.url, rel: 'noopener', target: '_blank' }, tour.name || tour.url), ' ',
         h('span', { class: 'muted' }, dateRange(tour.start, tour.end))),
-      tour.groups.length
-        ? [
-          h('p', { class: 'muted import-pick' }, t('groups.importPick')),
-          h('div', { class: 'palette-chips' }, tour.groups.map((g, i) => h('button', {
-            type: 'button', class: 'chip-button', disabled: !fitsCalculator(g), 'aria-pressed': String(loaded?.index === i),
-            onclick: () => importGroup(g, i, labels[i]),
-          }, labels[i], ' ', h('span', { class: 'muted' }, `(${g.teams.length})`)))),
-          tooBig ? h('p', { class: 'muted import-note' }, t('groups.importSizeNote')) : null,
-        ]
-        : h('p', { class: 'muted' }, t('groups.importNone')),
-      loaded
-        ? h('p', { class: 'import-note' }, t('groups.importLoaded', { name: loaded.name, scoring: scoringSummary() }),
-          loaded.unscored ? [' ', loaded.unscored === 1 ? t('groups.importUnscoredOne') : t('groups.importUnscoredMany', { n: loaded.unscored })] : null)
-        : null,
+      tour.groups.length ? importChoices(tour) : h('p', { class: 'muted' }, t('groups.importNone')),
     ];
   }
-  fill(box, content);
+  // A note on the open group (just imported or refreshed) stays while it is on screen.
+  const note = importer.note && calc.source ? h('p', { class: 'import-note' }, importer.note) : null;
+  fill(box, content, note);
 }
 
 function importPanel() {
+  if (!importer.link && calc.source) importer.link = calc.source.link; // a saved imported group, after a reload
   const input = h('input', {
     type: 'text', id: 'import-link', inputmode: 'url', autocomplete: 'off', spellcheck: 'false', value: importer.link,
     placeholder: 'https://badminfo.com/Tournament/…',
@@ -910,7 +1002,9 @@ function importPanel() {
     h('div', { class: 'calc-controls import-form' },
       h('label', { class: 'visually-hidden', for: 'import-link' }, t('groups.importLabel')),
       input,
-      h('button', { type: 'button', id: 'import-load', class: 'button', onclick: loadTournament }, t('groups.importButton'))),
+      h('button', { type: 'button', id: 'import-load', class: 'button', onclick: loadTournament }, t('groups.importButton')),
+      h('button', { type: 'button', id: 'import-refresh', class: 'button icon-button', title: t('groups.importRefresh'), 'aria-label': t('groups.importRefresh'),
+        hidden: !importer.tournament && !calc.source, onclick: refreshTournament }, '↻')),
     h('div', { id: 'import-result', 'aria-live': 'polite' }),
     h('p', { class: 'muted import-source' }, t('groups.importSource')));
 }
@@ -1162,16 +1256,18 @@ function drawGroupInputs() {
             drawGroupInputs();
             drawGroupResult();
           } }, t('groups.clear'))),
+        calc.source && importer.rowStatus ? h('p', { class: 'muted refresh-status', role: 'status' }, importer.rowStatus) : null,
         h('div', { class: 'table-scroll' }, h('table', { class: 'data-table calc-matches' },
           h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, ''),
             Array.from({ length: gameCount }, (_, g) => h('th', { scope: 'col' }, gameCount > 1 ? t('groups.game', { n: g + 1 }) : '')),
             h('th', { scope: 'col' }, ''))),
           h('tbody', {}, pairings(calc.size).map(([i, j]) => h('tr', { class: isOwnEntry(i) || isOwnEntry(j) ? 'own' : null },
+            // A no-break space keeps the dash with the first side, so a long pair breaks only after it.
             h('th', { scope: 'row', class: 'pair', 'data-pair': `${i}-${j}` },
-              h('span', { class: 'side side-a' }, entryLabel(i)), ' – ', h('span', { class: 'side side-b' }, entryLabel(j))),
+              h('span', { class: 'side side-a' }, entryLabel(i)), ' – ', h('span', { class: 'side side-b' }, entryLabel(j))),
             Array.from({ length: gameCount }, (_, g) => h('td', { class: 'game-cell', 'data-label': gameCount > 1 ? t('groups.game', { n: g + 1 }) : null },
               scoreInput(i, j, g, 0), h('span', { class: 'dash', 'aria-hidden': 'true' }, '–'), scoreInput(i, j, g, 1))),
-            h('td', { class: 'row-clear-cell' }, clearRowButton(i, j))))))))));
+            h('td', { class: 'row-clear-cell' }, calc.source ? refreshRowButton(i, j) : null, clearRowButton(i, j))))))))));
   markWinners();
 }
 

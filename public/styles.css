@@ -620,7 +620,9 @@ details.groups-part[open] > summary::before, .assumptions[open] > summary::befor
 .calc-columns { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr); gap: 16px; align-items: start; }
 .calc-players td, .calc-players th, .calc-matches td, .calc-matches th { vertical-align: middle; padding: 6px 8px; }
 .calc-players input[type="text"] { min-width: 90px; min-height: 36px; padding: 6px 8px; }
-.calc-matches .pair { white-space: nowrap; font-weight: 600; }
+/* A long pair of names may wrap at the dash between the two sides, never inside one side (phones wrap freely, below). */
+.calc-matches .pair { font-weight: 600; }
+@media (min-width: 600px) { .calc-matches .side { white-space: nowrap; } }
 /* Finished matches: winner light green, loser light red (with ✓ / ✕ so colour isn't the only cue). */
 .calc-matches .side { padding: 1px 6px; border-radius: 4px; }
 .calc-matches .side.win { background: var(--yes-bg); }
@@ -1018,7 +1020,7 @@ input[type="date"], select {
 .import-source { margin: 10px 0 0; font-size: var(--fs-xs); }
 .import-form { flex-wrap: nowrap; margin: 0 0 8px; }
 .import-form input { flex: 1 1 auto; min-width: 0; max-width: 32em; }
-.import-form .button { flex: none; white-space: nowrap; }
+.import-form .button { flex: none; white-space: nowrap; margin-top: 0; }
 .import-tournament { margin: 4px 0 6px; font-weight: 600; }
 .import-tournament .muted { font-weight: 400; font-size: var(--fs-sm); }
 .import-pick { margin: 0 0 6px; font-size: var(--fs-sm); }
@@ -1026,3 +1028,8 @@ input[type="date"], select {
 .import-panel .chip-button:disabled { opacity: 0.45; cursor: not-allowed; }
 .import-panel .chip-button[aria-pressed="true"] .muted { color: inherit; font-weight: 400; }
 .import-panel .warning { margin: 4px 0 0; }
+.import-form [hidden] { display: none; }
+.icon-button { margin-top: 0; padding: 9px 14px; flex: none; }
+.import-toggle { margin-top: 6px; padding-left: 0; font-size: var(--fs-sm); }
+.calc-matches .row-refresh { font-size: var(--fs-md); padding: 2px 6px; text-decoration: none; }
+.refresh-status { margin: -4px 0 8px; font-size: var(--fs-sm); }

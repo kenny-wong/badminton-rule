@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 
 import { summarize } from '../lib/badminfo.js';
 import { rankGroup } from '../public/groups.js';
-import { fitsCalculator, groupState, importLabels, scoringFromScores, unscoredMatches } from '../public/imported-group.js';
+import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, scoringFromScores, unscoredMatches } from '../public/imported-group.js';
 import { SAMPLE } from './fixtures/badminfo-sample.js';
 
 const match = (a, b, ...games) => ({ a, b, games, winner: null, note: null });
@@ -68,13 +68,85 @@ test('fitsCalculator takes groups of 3 to 6 entries', () => {
   assert.equal(fitsCalculator({ teams: teams(7) }), false);
 });
 
-test('importLabels adds the events once group names repeat across events', () => {
+test('importLabels shortens names to the event code and group letter', () => {
   const groups = [
     { event: 'MS Open', name: 'Group A' }, { event: 'MS Open', name: 'Group B' },
     { event: 'WD Open', name: 'Group A' }, { event: 'XD Open', name: 'XD Open' },
+    { event: 'OD Chichester', name: 'OD Chi - Group A' },
   ];
-  assert.deepEqual(importLabels(groups), ['MS Open · Group A', 'MS Open · Group B', 'WD Open · Group A', 'XD Open']);
-  // Names that are already different stay as they are.
-  const distinct = [{ event: 'OD Chichester', name: 'OD Chi - Group A' }, { event: 'XD Chichester', name: 'XD Chi - Group A' }];
-  assert.deepEqual(importLabels(distinct), ['OD Chi - Group A', 'XD Chi - Group A']);
+  assert.deepEqual(importLabels(groups), ['MS Group A', 'MS Group B', 'WD Group A', 'XD Open', 'OD Group A']);
+  // Two events with the same code: their full names tell the groups apart.
+  assert.deepEqual(importLabels([{ event: 'WS Open', name: 'Group A' }, { event: 'WS U15', name: 'Group A' }]),
+    ['WS Open Group A', 'WS U15 Group A']);
+  // An event name that isn't a code is kept whole.
+  assert.deepEqual(importLabels([{ event: 'Men’s Singles', name: 'Group A' }]), ['Men’s Singles Group A']);
+});
+
+test('savedPlayersIn finds saved players whatever their case and spacing', () => {
+  const group = { teams: [['Amy Lee', 'Bea Wu'], ['Cat Ng', 'Dee Ho']] };
+  assert.deepEqual(savedPlayersIn(group, ['amy  lee', 'Dee Ho', 'Zoe', '']), ['amy  lee', 'Dee Ho']);
+  assert.deepEqual(savedPlayersIn(group, []), []);
+});
+
+test('groupState spells saved players as saved and records the source', () => {
+  const source = { link: 'https://badminfo.com/Tournament/x', event: 'WD Open', name: 'Group A' };
+  const s = groupState({ teams: [['Amy Lee', 'Bea Wu'], ['Cat Ng', 'Dee Ho'], ['Eve', 'Fay']], matches: [] }, {}, { savedNames: ['amy lee'], source });
+  assert.deepEqual(s.entries[0], ['amy lee', 'Bea Wu']);
+  assert.deepEqual(s.source, source);
+});
+
+test('findGroup finds the same draw in a refreshed tournament', () => {
+  const tournament = { groups: [{ event: 'MS', name: 'Group A' }, { event: 'WS', name: 'Group A' }] };
+  assert.equal(findGroup(tournament, { event: 'WS', name: 'Group A' }), tournament.groups[1]);
+  assert.equal(findGroup(tournament, { event: 'XD', name: 'Group A' }), null);
+});
+
+describe('mergeResults', () => {
+  // The calculator holds A, B, C in its own order, with a what-if score typed in for B v C.
+  const state = groupState({ teams: [['A'], ['B'], ['C']], matches: [match(0, 1, [21, 10])] });
+  state.scores['1-2'] = [[21, 19]];
+  // badminfo now: A v B as before, C beat A, and D has played B.
+  const latest = { teams: [['C'], ['A'], ['B'], ['D']], matches: [
+    match(1, 2, [21, 10]), match(0, 1, [21, 17]), match(3, 2, [15, 21]), match(2, 0),
+  ] };
+
+  test('updates every match by name and adds entries that have played since', () => {
+    const r = mergeResults(state, latest);
+    assert.equal(r.changed, 2);
+    assert.equal(r.added, 1);
+    assert.equal(r.state.size, 4);
+    assert.deepEqual(r.state.entries.slice(0, 4).map((e) => e[0]), ['A', 'B', 'C', 'D']);
+    assert.deepEqual(r.state.scores, { '0-1': [[21, 10]], '0-2': [[17, 21]], '1-3': [[21, 15]], '1-2': [[21, 19]] });
+  });
+
+  test('with one match named, changes only that match', () => {
+    const r = mergeResults(state, latest, '0-2');
+    assert.equal(r.found, true);
+    assert.equal(r.changed, 1);
+    assert.equal(r.added, 0);
+    assert.equal(r.state.size, 3);
+    assert.deepEqual(r.state.scores, { '0-1': [[21, 10]], '0-2': [[17, 21]], '1-2': [[21, 19]] });
+    // B v C has no result on badminfo yet: the typed score stays.
+    const none = mergeResults(state, latest, '1-2');
+    assert.equal(none.found, true);
+    assert.equal(none.scored, false);
+    assert.equal(none.changed, 0);
+    // A v B is the same on badminfo as on screen.
+    const same = mergeResults(state, latest, '0-1');
+    assert.equal(same.scored, true);
+    assert.equal(same.changed, 0);
+    assert.deepEqual(none.state.scores['1-2'], [[21, 19]]);
+  });
+
+  test('reports a match it cannot find, for instance after a rename', () => {
+    const renamed = { ...state, entries: [['A'], ['Bob'], ['C'], ...state.entries.slice(3)] };
+    assert.equal(mergeResults(renamed, latest, '0-1').found, false);
+  });
+
+  test('stops adding entries at six', () => {
+    const big = { teams: Array.from({ length: 8 }, (_, i) => [`P${i}`]), matches: Array.from({ length: 7 }, (_, i) => match(i, i + 1, [21, 5])) };
+    const r = mergeResults(groupState({ teams: big.teams.slice(0, 3), matches: [] }), big);
+    assert.equal(r.state.size, 6);
+    assert.equal(r.added, 3);
+  });
 });

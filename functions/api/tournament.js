@@ -7,7 +7,7 @@ import { fail, json } from '../../lib/http.js';
 
 const TIMEOUT_MS = 8000;
 const MAX_BYTES = 2_000_000;
-const CACHE_SECONDS = 300; // results change during the day; five minutes is fresh enough
+const CACHE_SECONDS = 60; // the refresh buttons want fresh results; a minute still spares badminfo repeat requests
 
 export async function onRequestGet({ request }) {
   const id = badminfoId(new URL(request.url).searchParams.get('url'));

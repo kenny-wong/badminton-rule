@@ -82,16 +82,19 @@ test('importLabels shortens names to the event code and group letter', () => {
   assert.deepEqual(importLabels([{ event: 'Men’s Singles', name: 'Group A' }]), ['Men’s Singles Group A']);
 });
 
-test('savedPlayersIn finds saved players whatever their case and spacing', () => {
-  const group = { teams: [['Amy Lee', 'Bea Wu'], ['Cat Ng', 'Dee Ho']] };
-  assert.deepEqual(savedPlayersIn(group, ['amy  lee', 'Dee Ho', 'Zoe', '']), ['amy  lee', 'Dee Ho']);
+test('savedPlayersIn lists the group’s saved players by their full names', () => {
+  const group = { teams: [['Amy Lee', 'Bea Wu'], ['Chloe Wong', 'Dee Ho'], ['Chloe Lam', 'Eve']] };
+  assert.deepEqual(savedPlayersIn(group, ['amy  lee', 'Dee Ho', 'Zoe', '']), ['Amy Lee', 'Dee Ho']);
+  // A first name alone finds every player with it.
+  assert.deepEqual(savedPlayersIn(group, ['Chloe']), ['Chloe Wong', 'Chloe Lam']);
+  assert.deepEqual(savedPlayersIn(group, ['Chloe', 'chloe wong']), ['Chloe Wong', 'Chloe Lam']);
   assert.deepEqual(savedPlayersIn(group, []), []);
 });
 
-test('groupState spells saved players as saved and records the source', () => {
+test('groupState keeps the draw’s names and records the source', () => {
   const source = { link: 'https://badminfo.com/Tournament/x', event: 'WD Open', name: 'Group A' };
-  const s = groupState({ teams: [['Amy Lee', 'Bea Wu'], ['Cat Ng', 'Dee Ho'], ['Eve', 'Fay']], matches: [] }, {}, { savedNames: ['amy lee'], source });
-  assert.deepEqual(s.entries[0], ['amy lee', 'Bea Wu']);
+  const s = groupState({ teams: [['Amy Lee', 'Bea Wu'], ['Cat Ng', 'Dee Ho'], ['Eve', 'Fay']], matches: [] }, {}, { source });
+  assert.deepEqual(s.entries[0], ['Amy Lee', 'Bea Wu']);
   assert.deepEqual(s.source, source);
 });
 

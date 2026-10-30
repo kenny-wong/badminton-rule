@@ -51,3 +51,22 @@ export function saveProfiles(profiles, storage) {
     return false;
   }
 }
+
+// A name in a draw or a calculator slot often has more to it than the saved
+// name ("Chloe" saved, "Chloe Wong" in the draw). Words are compared whole and
+// without case, so "Ann" is not "Anna"; a hyphen splits words too.
+const words = (name) => name.toLowerCase().split(/[\s-]+/).filter(Boolean);
+
+/** Whether `name` is the saved player `saved`: it holds every word of the saved name, in any order. */
+export function namesMatch(saved, name) {
+  const have = words(name);
+  const want = words(saved);
+  return want.length > 0 && want.every((w) => have.includes(w));
+}
+
+/** The saved profile a name refers to: an exact match (ignoring case and spacing) first, else a partial one. */
+export function profileFor(profiles, name) {
+  const key = words(name).join(' ');
+  if (!key) return null;
+  return profiles.find((p) => words(p.name).join(' ') === key) ?? profiles.find((p) => namesMatch(p.name, name)) ?? null;
+}

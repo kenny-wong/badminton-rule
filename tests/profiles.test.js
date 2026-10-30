@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { loadProfiles, newProfile, sanitizeProfiles, saveProfiles } from '../public/profiles.js';
+import { loadProfiles, namesMatch, newProfile, profileFor, sanitizeProfiles, saveProfiles } from '../public/profiles.js';
 
 function memoryStorage() {
   const items = new Map();
@@ -41,4 +41,24 @@ test('a browser that blocks localStorage itself does not break loading or saving
     if (original) Object.defineProperty(globalThis, 'localStorage', original);
     else delete globalThis.localStorage;
   }
+});
+
+test('namesMatch finds a saved name inside a longer one, by whole words', () => {
+  assert.equal(namesMatch('Chloe', 'Chloe Wong'), true);
+  assert.equal(namesMatch('chloe  WONG', 'Chloe Wong'), true);
+  assert.equal(namesMatch('Wong Chloe', 'Chloe Wong'), true);
+  assert.equal(namesMatch('Ann', 'Chloe-Ann Wong'), true);
+  assert.equal(namesMatch('Ann', 'Anna Lee'), false);
+  assert.equal(namesMatch('Chloe Lam', 'Chloe Wong'), false);
+  assert.equal(namesMatch('', 'Chloe Wong'), false);
+});
+
+test('profileFor prefers an exact name, then a partial one', () => {
+  const chloe = { name: 'Chloe', gender: 'F' };
+  const chloeWong = { name: 'chloe wong', gender: 'F' };
+  const ben = { name: 'Ben', gender: 'M' };
+  assert.equal(profileFor([chloe, chloeWong, ben], 'Chloe Wong'), chloeWong);
+  assert.equal(profileFor([chloe, ben], 'Chloe Wong'), chloe);
+  assert.equal(profileFor([chloe, ben], 'Zoe'), null);
+  assert.equal(profileFor([chloe], '  '), null);
 });

@@ -2,7 +2,7 @@ import { DISCIPLINES, GRADES, JUNIOR_AGE_GROUPS, SEASON, checkEligibility, grade
 import { LOCALES, currentLocale, initialLocale, setLocale, t, tParts, td } from './i18n.js';
 import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, qualificationDetail, rankGroup } from './groups.js';
 import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, unscoredMatches } from './imported-group.js';
-import { loadProfiles, newProfile, saveProfiles } from './profiles.js';
+import { loadProfiles, newProfile, profileFor, saveProfiles } from './profiles.js';
 import { renderLaws } from './laws.js';
 import { MAX_GROUPS, groupNames, loadGroups, newGroup, sanitizeState, saveGroups } from './saved-groups.js';
 
@@ -660,20 +660,14 @@ const calc = {
   source: null, // where an imported group came from ({ link, event, name }), so its results can be refreshed
 };
 
-/** Saved players' names: entries holding any of them count as the reader's own. */
-function ownNames() {
-  return new Set(profiles.map((p) => p.name.trim()).filter(Boolean));
-}
-
+/** Entries holding a saved player count as the reader's own; a saved "Chloe" also counts "Chloe Wong" (profileFor). */
 function isOwnEntry(i) {
-  const own = ownNames();
-  return calc.entries[i].slice(0, slotsPerEntry()).some((n) => own.has(n.trim()));
+  return calc.entries[i].slice(0, slotsPerEntry()).some((n) => profileFor(profiles, n));
 }
 
-/** A saved player's gender ('M', 'F' or ''), looked up by name. */
+/** A saved player's gender ('M', 'F' or ''), looked up by name, partly matched as above. */
 function genderOf(name) {
-  const key = name.trim();
-  return (key && profiles.find((p) => p.name.trim() === key)?.gender) || '';
+  return profileFor(profiles, name)?.gender || '';
 }
 
 const genderClass = (name) => GENDER_CLASS[genderOf(name)] ?? '';
@@ -886,7 +880,7 @@ function importGroup(group, label) {
   savedGroups.active = null;
   persistGroups();
   const source = { link: importer.tournament.url, event: group.event, name: group.name };
-  applyGroupState(groupState(group, calc, { savedNames: savedNames(), source }));
+  applyGroupState(groupState(group, calc, { source }));
   calc.importedName = label;
   const unscored = unscoredMatches(group);
   importer.note = [
@@ -942,7 +936,7 @@ function importChoices(tour) {
   const labels = importLabels(tour.groups);
   const names = savedNames();
   const hasSaved = names.some((n) => n.trim());
-  const mine = tour.groups.map((g) => [...new Set(savedPlayersIn(g, names))]);
+  const mine = tour.groups.map((g) => savedPlayersIn(g, names));
   const filtering = hasSaved && !importer.showAll;
   const shown = tour.groups.flatMap((g, i) => (!filtering || mine[i].length ? [i] : []));
   const label = (i) => (mine[i].length ? `${labels[i]} (${mine[i].join(', ')})` : labels[i]);

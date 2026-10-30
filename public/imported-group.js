@@ -4,6 +4,7 @@
 // scores themselves. No DOM code here, so it is unit tested.
 
 import { SCORING_PRESETS } from './groups.js';
+import { namesMatch } from './profiles.js';
 import { sanitizeState } from './saved-groups.js';
 
 export const MIN_ENTRIES = 3;
@@ -33,15 +34,19 @@ export function scoringFromScores(matches) {
   return { format, gamePoints: points, noSetting, preset };
 }
 
-// Names are compared without case or extra spaces, so a saved "Amy  lee" is
-// badminfo's "Amy Lee".
+// When refreshing, an entry is found by its names, ignoring case and extra
+// spaces, so "Amy  lee" typed in a slot is badminfo's "Amy Lee".
 const norm = (name) => name.trim().replace(/\s+/g, ' ').toLowerCase();
 const teamKey = (names) => names.map(norm).filter(Boolean).sort().join('|');
 
-/** The saved players' names found in the group, spelled as they were saved. */
+/**
+ * The group's players who are saved players, as the group spells them. A saved
+ * name matches partly too, so a saved "Chloe" finds "Chloe Wong" (and any other
+ * Chloe); the full names show the reader which group is whose.
+ */
 export function savedPlayersIn(group, savedNames) {
-  const spelling = new Map(savedNames.filter((n) => n.trim()).map((n) => [norm(n), n.trim()]));
-  return group.teams.flat().map((n) => spelling.get(norm(n))).filter(Boolean);
+  const saved = savedNames.filter((n) => n.trim());
+  return [...new Set(group.teams.flat().filter((n) => saved.some((s) => namesMatch(s, n))))];
 }
 
 /**
@@ -77,13 +82,10 @@ export const unscoredMatches = (group) => group.matches.filter((m) => m.winner &
  * The calculator state for the group, keeping `current`'s scoring when no game
  * has been played. Each match's games are turned round where needed, since the
  * calculator keeps a match under "i-j" with i < j and entry i's points first.
- * Names of saved players take their saved spelling, so the page knows them as
- * the reader's own. `source` records where the group came from, for refreshing.
+ * `source` records where the group came from, for refreshing.
  */
-export function groupState(group, current = {}, { savedNames = [], source = null } = {}) {
+export function groupState(group, current = {}, { source = null } = {}) {
   const doubles = group.teams.some((t) => t.length > 1);
-  const spelling = new Map(savedNames.filter((n) => n.trim()).map((n) => [norm(n), n.trim()]));
-  const spell = (n) => (n ? spelling.get(norm(n)) ?? n : '');
   const scores = {};
   for (const { a, b, games } of group.matches) {
     if (!games.length) continue;
@@ -96,7 +98,7 @@ export function groupState(group, current = {}, { savedNames = [], source = null
     ...scoring,
     event: doubles ? 'doubles' : 'singles',
     size: group.teams.length,
-    entries: group.teams.map((t) => [spell(t[0]), doubles ? spell(t[1]) : '']),
+    entries: group.teams.map((t) => [t[0] ?? '', doubles ? t[1] ?? '' : '']),
     scores,
     source,
   });

@@ -165,3 +165,16 @@ export function mergeResults(state, group, only = null) {
   }
   return { state: sanitizeState({ ...state, entries, ids, size, scores }), changed, added, found, scored };
 }
+
+/**
+ * A player's tournaments to offer (from /api/player): the next few that haven't
+ * ended by `today` (YYYY-MM-DD), soonest first, and, when `past` is asked for,
+ * every upcoming one plus the past ones, latest first.
+ * @returns {{ upcoming: object[], past: object[], pastCount: number }}
+ */
+export function tournamentChoices(tournaments, today, { past = false, next = 5 } = {}) {
+  const ended = (t) => (t.end ?? t.start ?? '') < today;
+  const upcoming = tournaments.filter((t) => !ended(t)).sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''));
+  const before = tournaments.filter(ended).sort((a, b) => (b.start ?? '').localeCompare(a.start ?? ''));
+  return { upcoming: past ? upcoming : upcoming.slice(0, next), past: past ? before : [], pastCount: before.length };
+}

@@ -3,7 +3,7 @@ import { describe, test } from 'node:test';
 
 import { summarize } from '../lib/badminfo.js';
 import { rankGroup } from '../public/groups.js';
-import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, scoringFromScores, unscoredMatches } from '../public/imported-group.js';
+import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, scoringFromScores, tournamentChoices, unscoredMatches } from '../public/imported-group.js';
 import { SAMPLE } from './fixtures/badminfo-sample.js';
 
 const match = (a, b, ...games) => ({ a, b, games, winner: null, note: null });
@@ -180,4 +180,21 @@ describe('mergeResults', () => {
     assert.equal(r.state.size, 6);
     assert.equal(r.added, 3);
   });
+});
+
+test('tournamentChoices lists the next few tournaments, and the past ones on request', () => {
+  const tour = (n, start, end = start) => ({ id: `t${n}`, name: `T${n}`, start, end });
+  const list = [
+    tour(1, '2026-01-10'), tour(2, '2026-10-24'), tour(3, '2026-10-29', '2026-10-31'), // ends after today: still on
+    tour(4, '2026-11-01'), tour(5, '2026-11-08'), tour(6, '2026-11-15'), tour(7, '2026-12-01'), tour(8, '2027-01-05'),
+  ];
+  const today = '2026-10-30';
+  const shown = tournamentChoices(list, today);
+  assert.deepEqual(shown.upcoming.map((t) => t.id), ['t3', 't4', 't5', 't6', 't7']);
+  assert.deepEqual(shown.past, []);
+  assert.equal(shown.pastCount, 2);
+  const all = tournamentChoices(list, today, { past: true });
+  assert.deepEqual(all.upcoming.map((t) => t.id), ['t3', 't4', 't5', 't6', 't7', 't8']);
+  assert.deepEqual(all.past.map((t) => t.id), ['t2', 't1']);
+  assert.deepEqual(tournamentChoices([], today), { upcoming: [], past: [], pastCount: 0 });
 });

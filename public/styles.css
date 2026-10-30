@@ -1037,3 +1037,18 @@ input[type="date"], select {
 .player-import { margin-top: 16px; }
 .players-edit .rating { display: block; margin-top: 2px; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
 .players-edit .row-refresh { font-size: var(--fs-md); text-decoration: none; }
+/* A small outlined button that still stands out, such as "↻ Update rating". */
+.small-button {
+  font: inherit; font-size: var(--fs-sm); font-weight: 650; padding: 4px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+  color: var(--accent); background: var(--surface); border: 1.5px solid var(--accent);
+}
+.small-button:hover { background: var(--accent); color: var(--surface); }
+.small-button:disabled { opacity: 0.5; cursor: wait; }
+.small-button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.import-player { margin: 0 0 6px; }
+#import-player { max-width: 100%; }
+#import-player-tournaments:not(:empty) { margin: 0 0 12px; }
+.import-past { margin: 8px 0 4px; }
+.tournament-chip { text-align: left; }
+.players-edit .small-button { margin-right: 8px; }
+.tournament-chip .muted { white-space: nowrap; }

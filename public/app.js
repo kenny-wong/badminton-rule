@@ -1,7 +1,7 @@
 import { DISCIPLINES, GRADES, JUNIOR_AGE_GROUPS, SEASON, checkEligibility, gradeChartRows, juniorAgeGroup, parseDate } from './eligibility.js';
 import { LOCALES, currentLocale, initialLocale, setLocale, t, tParts, td } from './i18n.js';
 import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, qualificationDetail, rankGroup } from './groups.js';
-import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, unscoredMatches } from './imported-group.js';
+import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, tournamentChoices, unscoredMatches } from './imported-group.js';
 import { MAX_PROFILES, addFromBadminfo, loadProfiles, newProfile, profileFor, saveProfiles, updateRatings } from './profiles.js';
 import { renderLaws } from './laws.js';
 import { MAX_GROUPS, groupNames, loadGroups, newGroup, sanitizeState, saveGroups } from './saved-groups.js';
@@ -418,17 +418,6 @@ function playerLine(profile) {
   return group ? t('players.bornGroup', { year: dob.year, group }) : t('players.born', { year: dob.year });
 }
 
-async function copyLink(profile, button) {
-  const url = new URL(shareHash(profile), location.href).href;
-  try {
-    await navigator.clipboard.writeText(url);
-    button.textContent = t('players.copied');
-    setTimeout(() => (button.textContent = t('players.copyLink')), 2000);
-  } catch {
-    prompt(t('players.copyLink'), url); // clipboard blocked: let the reader copy it by hand
-  }
-}
-
 function profileActions(profile) {
   if (profile === linkedPlayer) {
     return [
@@ -451,10 +440,9 @@ function profileActions(profile) {
   return [
     // Players added from a badminfo link (they keep its id) can update their ratings.
     profile.badminfoId
-      ? h('button', { type: 'button', class: 'link-button row-refresh', title: t('players.ratingsRefresh', { name }), 'aria-label': t('players.ratingsRefresh', { name }),
-        onclick: (e) => refreshRatings(profile, e.currentTarget) }, '↻')
+      ? h('button', { type: 'button', class: 'small-button', title: t('players.ratingsRefresh', { name }), 'aria-label': t('players.ratingsRefresh', { name }),
+        onclick: (e) => refreshRatings(profile, e.currentTarget) }, h('span', { 'aria-hidden': 'true' }, '↻ '), t('players.updateRating'))
       : null,
-    h('button', { type: 'button', class: 'link-button', onclick: (e) => copyLink(profile, e.currentTarget) }, t('players.copyLink')),
     h('button', { type: 'button', class: 'link-button danger', onclick: () => {
       if (!confirm(t('players.confirmRemove', { name: profile.name || t('players.thisPlayer') }))) return;
       profiles = profiles.filter((x) => x.id !== profile.id);
@@ -929,6 +917,73 @@ function savedGroupsPanel() {
 // all of them with the button beside the link, or one match from its row.
 const importer = { link: '', busy: false, error: null, tournament: null, showAll: false, note: null, rowStatus: null };
 
+// Picking a tournament through a saved player: players added from badminfo
+// (they keep its id) can be chosen, and /api/player lists their tournaments,
+// the next few by default, past ones on request. Choosing one loads it as if
+// its link had been pasted.
+const playerPick = { id: '', busy: false, error: null, tournaments: null, past: false };
+
+/** Today as YYYY-MM-DD in the reader's time zone. */
+function todayIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+async function pickImportPlayer(profileId) {
+  Object.assign(playerPick, { id: profileId, busy: false, error: null, tournaments: null });
+  const profile = profiles.find((p) => p.id === profileId && p.badminfoId);
+  if (profile) {
+    playerPick.busy = true;
+    drawPlayerTournaments();
+    const { player, error } = await fetchPlayer(`https://badminfo.com/Player/${profile.badminfoId}`);
+    if (playerPick.id !== profileId) return; // another player was picked meanwhile
+    Object.assign(playerPick, { busy: false, error: error ?? null, tournaments: player?.tournaments ?? [] });
+  }
+  drawPlayerTournaments();
+}
+
+function openTournament(tour) {
+  importer.link = `https://badminfo.com/Tournament/${tour.id}`;
+  const input = document.getElementById('import-link');
+  if (input) input.value = importer.link;
+  loadTournament();
+}
+
+function drawPlayerTournaments() {
+  const box = document.getElementById('import-player-tournaments');
+  if (!box) return;
+  if (!playerPick.id) return fill(box);
+  if (playerPick.busy) return fill(box, h('p', { class: 'muted' }, t('groups.importPlayerLoading')));
+  if (playerPick.error) return fill(box, h('p', { class: 'warning' }, t(`groups.importErr.${playerPick.error}`)));
+  const { upcoming, past, pastCount } = tournamentChoices(playerPick.tournaments ?? [], todayIso(), { past: playerPick.past });
+  const chip = (tour) => h('button', {
+    type: 'button', class: 'chip-button tournament-chip', 'aria-pressed': String(importer.tournament?.id === tour.id), onclick: () => openTournament(tour),
+  }, tour.name, ' ', h('span', { class: 'muted' }, dateRange(tour.start, tour.end)));
+  fill(box,
+    upcoming.length
+      ? [h('p', { class: 'muted import-pick' }, t('groups.importUpcoming')), h('div', { class: 'palette-chips' }, upcoming.map(chip))]
+      : h('p', { class: 'muted import-pick' }, t('groups.importNoUpcoming')),
+    pastCount
+      ? h('label', { class: 'check import-past' },
+        h('input', { type: 'checkbox', checked: playerPick.past, onchange: (e) => { playerPick.past = e.target.checked; drawPlayerTournaments(); } }),
+        ` ${t('groups.importShowPast', { n: pastCount })}`)
+      : null,
+    past.length ? [h('p', { class: 'muted import-pick' }, t('groups.importPast')), h('div', { class: 'palette-chips' }, past.map(chip))] : null);
+}
+
+function playerPicker() {
+  const linked = profiles.filter((p) => p.badminfoId);
+  if (!linked.length) return h('p', { class: 'muted import-hint' }, t('groups.importPlayerHint'));
+  if (!linked.some((p) => p.id === playerPick.id)) Object.assign(playerPick, { id: '', tournaments: null, error: null });
+  return [
+    h('div', { class: 'calc-controls calc-fields import-player' },
+      field(t('groups.importPlayer'), h('select', { id: 'import-player', onchange: (e) => pickImportPlayer(e.target.value) },
+        h('option', { value: '' }, t('groups.importPlayerNone')),
+        linked.map((p) => h('option', { value: p.id, selected: p.id === playerPick.id }, p.name || t('players.unnamed')))))),
+    h('div', { id: 'import-player-tournaments', 'aria-live': 'polite' }),
+  ];
+}
+
 /** { tournament } or { error }. Asks past the browser's cache, so a refresh gets the latest. */
 async function fetchTournament(link) {
   try {
@@ -1084,6 +1139,7 @@ function drawImport() {
   // A note on the open group (just imported or refreshed) stays while it is on screen.
   const note = importer.note && calc.source ? h('p', { class: 'import-note' }, importer.note) : null;
   fill(box, content, note);
+  drawPlayerTournaments(); // marks the tournament now open
 }
 
 function importPanel() {
@@ -1096,6 +1152,7 @@ function importPanel() {
   });
   return h('div', { class: 'saved-groups import-panel' },
     h('p', { class: 'palette-title' }, t('groups.importTitle')),
+    playerPicker(),
     h('p', { class: 'muted import-hint' }, t('groups.importHint')),
     h('div', { class: 'calc-controls import-form' },
       h('label', { class: 'visually-hidden', for: 'import-link' }, t('groups.importLabel')),

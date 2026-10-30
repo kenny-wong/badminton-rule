@@ -53,4 +53,13 @@ export const PLAYER = {
     { key: 'Double', value: 'J', firstSeenUtc: '2024-12-17T07:17:32Z' },
   ],
   ratings: { ratingsDate: '2026-10-30T00:00:00Z', singlesRating: 515, doublesRating: 463, mixedRating: 473 },
+  upcomingTournaments: [
+    { id: 'aaaa0001-0000-4000-8000-000000000001', name: 'Example U15 Silver', startDate: '2026-11-01T00:00:00', endDate: '2026-11-01T00:00:00' },
+  ],
+  competitionsWithRubbers: [
+    // The upcoming tournament appears here too, with no matches yet.
+    { tournament: { id: 'aaaa0001-0000-4000-8000-000000000001', name: 'Example U15 Silver', startDate: '2026-11-01T00:00:00', endDate: '2026-11-01T00:00:00' }, rubbers: [] },
+    { tournament: { id: 'aaaa0002-0000-4000-8000-000000000002', name: 'Example U15 Bronze October', startDate: '2026-10-24T00:00:00', endDate: '2026-10-24T00:00:00' }, rubbers: [{}] },
+    { tournament: null, league: { name: 'A league' }, rubbers: [{}] },
+  ],
 };

@@ -114,6 +114,11 @@ test('summarizePlayer keeps the latest grade in each discipline, the BE number a
     grades: { singles: 'H', doubles: 'I', mixed: 'H' },
     ratings: { singles: 515, doubles: 463, mixed: 473 },
     ratingsDate: '2026-10-30',
+    // Oldest first, each once; the league is left out.
+    tournaments: [
+      { id: 'aaaa0002-0000-4000-8000-000000000002', name: 'Example U15 Bronze October', start: '2026-10-24', end: '2026-10-24' },
+      { id: 'aaaa0001-0000-4000-8000-000000000001', name: 'Example U15 Silver', start: '2026-11-01', end: '2026-11-01' },
+    ],
   });
   const bare = summarizePlayer({ name: 'Lee', gradings: [{ key: 'Single', value: 'Z' }], beNumber: 'x', ratings: { singlesRating: -5 } }, PLAYER_ID);
   assert.deepEqual([bare.beNumber, bare.grades.singles, bare.ratings.singles, bare.ratingsDate], ['', '', null, null]);

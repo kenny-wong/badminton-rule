@@ -934,12 +934,24 @@ input[type="date"], select {
   /* Each match becomes a block: the pairing, then its games side by side. */
   .calc-matches thead { display: none; }
   .calc-matches, .calc-matches tbody { display: block; }
-  .calc-matches tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 6px; padding: 8px; border-bottom: 1px solid var(--border); }
+  /* One-game matches: the two sides stacked on the left, the score and buttons on the right.
+     Best of three: the sides and buttons on top, the three games in a row below. */
+  .calc-matches tr { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 6px 8px; padding: 8px; border-bottom: 1px solid var(--border); }
+  .calc-matches.fmt-three tr { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 10px; }
   .calc-matches tbody tr:last-child { border-bottom: 0; }
   .calc-matches th, .calc-matches td { border: 0; padding: 0; }
-  .calc-matches .pair { grid-column: 1 / 3; white-space: normal; }
-  /* The row's clear button sits at the right of the pairing line. */
-  .calc-matches .row-clear-cell { grid-row: 1; grid-column: 3; justify-self: end; width: auto; }
+  .calc-matches .pair { grid-column: 1; grid-row: 1; white-space: normal; font-size: var(--fs-sm); line-height: 1.5; }
+  .calc-matches.fmt-three .pair { grid-column: 1 / 3; }
+  .calc-matches.fmt-three .row-clear-cell { grid-column: 3; }
+  .calc-matches.fmt-three .score-input { width: 2.6em; }
+  .calc-matches .pair .side { display: block; width: fit-content; }
+  .calc-matches .pair .side + .vs + .side { margin-top: 2px; }
+  .calc-matches .vs { display: none; }
+  .calc-matches.fmt-one .game-cell { grid-row: 1; grid-column: 2; }
+  .calc-matches.fmt-three .game-cell { grid-row: 2; }
+  .calc-matches .row-clear-cell { grid-row: 1; grid-column: -2 / -1; justify-self: end; width: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  .calc-matches tr.own { background: var(--own); }
+  .calc-matches tr.own > * { background: transparent; }
   .calc-matches .game-cell[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-2xs); color: var(--muted); }
   .score-input { width: 2.9em; padding: 4px 2px; }
   /* Standings: difference under the totals, tighter cells, so the table fits a phone. */
@@ -1092,3 +1104,13 @@ input[type="date"], select {
   /* The tournament picker takes its own full row under the player picker, or its long names squeeze the player select to nothing. */
   .import-player > #import-player-tournaments { grid-column: 1 / -1; }
 }
+
+/* Saved players fold away once a group is imported or full. */
+details.palette > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: baseline; gap: 6px; }
+details.palette > summary::-webkit-details-marker { display: none; }
+details.palette > summary::before { content: "▸"; color: var(--muted); }
+details.palette[open] > summary::before { content: "▾"; }
+/* The outlook: counts first, every case on request. */
+.outlook-counts { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+.outlook-more > summary { cursor: pointer; color: var(--accent); text-decoration: underline; font-size: var(--fs-sm); margin: 0 0 8px; }
+.outlook-more[open] > summary { margin-bottom: 10px; }

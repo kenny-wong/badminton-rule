@@ -295,6 +295,8 @@ export default {
   'groups.clearRowLabel': 'Effacer les scores du match {a} contre {b}',
   'groups.ownHint': 'Les entrées avec vos joueurs enregistrés sont surlignées.',
   'groups.outlookTitle': 'Ce qu’il faut pour se qualifier',
+  'groups.outlookShowAll': 'Afficher les {n} cas',
+  'groups.outlookCountDepends': 'Selon',
   'groups.outlookFor': 'Pour',
   'groups.outlookTarget': 'Objectif',
   'groups.targetFirst': 'Finir 1er',

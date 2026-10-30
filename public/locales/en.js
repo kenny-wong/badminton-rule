@@ -296,6 +296,8 @@ export default {
   'groups.clearRowLabel': 'Clear the scores of {a} v {b}',
   'groups.ownHint': 'Entries with your saved players are highlighted.',
   'groups.outlookTitle': 'What it takes to go through',
+  'groups.outlookShowAll': 'Show all {n} cases',
+  'groups.outlookCountDepends': 'Depends',
   'groups.outlookFor': 'For',
   'groups.outlookTarget': 'Goal',
   'groups.targetFirst': 'Finish 1st',

@@ -768,11 +768,12 @@ const calc = {
   ids: GROUP_LETTERS.map(() => ['', '']), // each name's badminfo player id, from an imported draw or a saved player
   withdrew: GROUP_LETTERS.map(() => false),
   picked: null,
-  outlook: { entry: null, places: 1 }, // goal defaults to finishing 1st
+  outlook: { entry: null, places: 1, open: false }, // goal defaults to finishing 1st; the full list of cases starts folded
   gamePoints: 21, // points per game: decides when a game is finished, and projects unplayed matches
   noSetting: false, // true: first to the target wins the game, even from 20 all
   preset: 'bwf', // which tournament's scoring is applied; 'custom' once changed by hand
   rulesOpen: false, // the rules part of the page starts folded
+  paletteOpen: null, // the saved players' fold as the reader set it; null: open only while places are empty
   scoringOpen: false, // the scoring settings start folded: an import or a tournament preset sets them
   importedName: null, // the badminfo group just imported, if any: it names the group when saved
   source: null, // where an imported group came from ({ link, event, name }), so its results can be refreshed
@@ -1066,6 +1067,7 @@ function importGroup(group, label) {
   const source = { link: importer.tournament.url, event: group.event, name: group.name };
   applyGroupState(groupState(group, calc, { source }));
   calc.importedName = label;
+  calc.paletteOpen = null;
   const unscored = unscoredMatches(group);
   importer.note = [
     t('groups.importLoaded', { name: label, scoring: scoringSummary() }),
@@ -1292,8 +1294,13 @@ function playerPalette() {
     return h('p', { class: 'muted palette' }, tParts('groups.noSaved', { link: h('a', { href: '#/check' }, t('tab.check')) }));
   }
   const placed = placedNames();
-  return h('div', { class: 'palette' },
-    h('p', { class: 'palette-title' }, t('groups.savedPlayers')),
+  // Open while there are empty places to fill by hand; folded for an imported
+  // group or a full one. Once the reader opens or closes it, that choice stays.
+  const emptySlot = calc.entries.slice(0, calc.size).some((e) => e.slice(0, slotsPerEntry()).some((n) => !n.trim()));
+  const autoOpen = !calc.source && emptySlot;
+  const open = calc.paletteOpen ?? autoOpen;
+  return h('details', { class: 'palette', open, ontoggle: (e) => { if (e.target.open !== open) calc.paletteOpen = e.target.open; } },
+    h('summary', { class: 'palette-title' }, t('groups.savedPlayers'), ' ', h('span', { class: 'saved-count' }, `(${saved.length})`)),
     h('div', { class: 'palette-chips' }, saved.map((name) => h('button', {
       type: 'button', class: ['player-chip', genderClass(name), placed.has(name) ? 'placed' : ''].filter(Boolean).join(' '), 'aria-pressed': String(calc.picked === name),
       onpointerdown: (e) => startDrag(e, name),
@@ -1440,14 +1447,14 @@ function drawGroupInputs() {
             drawGroupResult();
           } }, t('groups.clear'))),
         calc.source && importer.rowStatus ? h('p', { class: 'muted refresh-status', role: 'status' }, importer.rowStatus) : null,
-        h('div', { class: 'table-scroll' }, h('table', { class: 'data-table calc-matches' },
+        h('div', { class: 'table-scroll' }, h('table', { class: `data-table calc-matches ${calc.format === 'oneGame' ? 'fmt-one' : 'fmt-three'}` },
           h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, ''),
             Array.from({ length: gameCount }, (_, g) => h('th', { scope: 'col' }, gameCount > 1 ? t('groups.game', { n: g + 1 }) : '')),
             h('th', { scope: 'col' }, ''))),
           h('tbody', {}, pairings(calc.size).map(([i, j]) => h('tr', { class: isOwnEntry(i) || isOwnEntry(j) ? 'own' : null },
             // A no-break space keeps the dash with the first side, so a long pair breaks only after it.
             h('th', { scope: 'row', class: 'pair', 'data-pair': `${i}-${j}` },
-              h('span', { class: 'side side-a' }, entryLabel(i)), ' – ', h('span', { class: 'side side-b' }, entryLabel(j))),
+              h('span', { class: 'side side-a' }, entryLabel(i)), h('span', { class: 'vs' }, ' – '), h('span', { class: 'side side-b' }, entryLabel(j))),
             Array.from({ length: gameCount }, (_, g) => h('td', { class: 'game-cell', 'data-label': gameCount > 1 ? t('groups.game', { n: g + 1 }) : null },
               scoreInput(i, j, g, 0), h('span', { class: 'dash', 'aria-hidden': 'true' }, '–'), scoreInput(i, j, g, 1))),
             h('td', { class: 'row-clear-cell' }, calc.source ? refreshRowButton(i, j) : null, clearRowButton(i, j))))))))));
@@ -1562,6 +1569,16 @@ function marginCell(result, open, nameOf) {
 }
 
 /** "Can Amy finish 1st?" for groups with matches still to play. */
+/** "✓ Through ×3  ✕ Out ×4  ? Depends ×2": how the cases end, before the full list. */
+function outlookCounts(types) {
+  const count = (type) => types.filter((x) => x === type).length;
+  const other = types.length - count('yes') - count('no');
+  return h('p', { class: 'outlook-counts' },
+    count('yes') ? verdictBadge('yes', `${t('groups.outlookYes')} ×${count('yes')}`) : null,
+    count('no') ? verdictBadge('no', `${t('groups.outlookNo')} ×${count('no')}`) : null,
+    other ? verdictBadge('depends', `${t('groups.outlookCountDepends')} ×${other}`) : null);
+}
+
 function outlookPanel() {
   const players = calcPlayers();
   const entry = outlookEntry();
@@ -1586,6 +1603,9 @@ function outlookPanel() {
     };
     body = [
       h('p', {}, t('groups.outlookOpen', { name, goal })),
+      outlookCounts(detail.rows.map((r) => r.result.type)),
+      h('details', { class: 'outlook-more', open: calc.outlook.open, ontoggle: (e) => { calc.outlook.open = e.target.open; } },
+        h('summary', {}, t('groups.outlookShowAll', { n: detail.rows.length })),
       table('outlook-table', [h('th', { scope: 'col' }, t('groups.outlookIf')), h('th', { scope: 'col' }, t('groups.outlookResult'))],
         detail.rows.map((row) => h('tr', {},
           h('td', {}, row.conditions.length
@@ -1596,7 +1616,7 @@ function outlookPanel() {
               : row.result.type === 'margin' ? marginCell(row.result, detail.open, nameOf)
                 : verdictBadge('depends', dependsText(row.result.reasons)))))),
       detail.rows.some((r) => r.result.type === 'margin') ? h('p', { class: 'muted outlook-note' }, t('groups.marginNote'), ' ', t('groups.scoreNote', { n: calc.gamePoints })) : null,
-      detail.mode === 'winLoss' && calc.format === 'bestOf3' ? h('p', { class: 'muted outlook-note' }, t('groups.winLossNote')) : null,
+      detail.mode === 'winLoss' && calc.format === 'bestOf3' ? h('p', { class: 'muted outlook-note' }, t('groups.winLossNote')) : null),
     ];
   } else {
     // Too many combinations to list in full: summarise by the entry's own results.
@@ -1605,6 +1625,9 @@ function outlookPanel() {
     else {
       body = [
         h('p', {}, t('groups.outlookOpen', { name, goal })),
+        outlookCounts(q.rows.map((r) => r.result)),
+        h('details', { class: 'outlook-more', open: calc.outlook.open, ontoggle: (e) => { calc.outlook.open = e.target.open; } },
+          h('summary', {}, t('groups.outlookShowAll', { n: q.rows.length })),
         h('p', { class: 'muted outlook-note' }, t('groups.tooManyRows')),
         table('outlook-table', [h('th', { scope: 'col' }, t('groups.outlookIf')), h('th', { scope: 'col' }, t('groups.outlookResult'))],
           q.rows.map((row) => h('tr', {},
@@ -1614,7 +1637,7 @@ function outlookPanel() {
               : t('groups.outlookOwnDone', { name })),
             h('td', {}, row.result === 'yes' ? verdictBadge('yes', t('groups.outlookYes'))
               : row.result === 'no' ? verdictBadge('no', t('groups.outlookNo'))
-                : verdictBadge('depends', dependsText(row.reasons)))))),
+                : verdictBadge('depends', dependsText(row.reasons))))))),
       ];
     }
   }

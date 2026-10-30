@@ -296,6 +296,8 @@ export default {
   'groups.clearRowLabel': '清除 {a} 對 {b} 的比分',
   'groups.ownHint': '有你已儲存選手的組合會以顏色標示。',
   'groups.outlookTitle': '出線分析',
+  'groups.outlookShowAll': '顯示全部 {n} 種情況',
+  'groups.outlookCountDepends': '視乎情況',
   'groups.outlookFor': '分析對象',
   'groups.outlookTarget': '目標',
   'groups.targetFirst': '首名',

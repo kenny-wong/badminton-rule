@@ -296,6 +296,8 @@ export default {
   'groups.clearRowLabel': '{a}対{b}のスコアをクリア',
   'groups.ownHint': '保存済みの選手を含むエントリーは強調表示されます。',
   'groups.outlookTitle': 'グループ突破の条件',
+  'groups.outlookShowAll': '全 {n} 通りを表示',
+  'groups.outlookCountDepends': '条件次第',
   'groups.outlookFor': '対象',
   'groups.outlookTarget': '目標',
   'groups.targetFirst': '1位',

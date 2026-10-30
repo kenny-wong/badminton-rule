@@ -615,4 +615,5 @@ export default {
   'audit.d.desktop': 'Ordinateur',
   'audit.d.bot': 'Robot',
   'account.expired': 'Vous avez été déconnecté : les dernières modifications ne sont enregistrées que dans ce navigateur. Reconnectez-vous pour les enregistrer dans votre compte.',
+  'groups.refreshShort': 'Actualiser',
 };

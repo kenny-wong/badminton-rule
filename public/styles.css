@@ -1043,7 +1043,8 @@ input[type="date"], select {
 .import-form [hidden] { display: none; }
 .icon-button { margin-top: 0; padding: 9px 14px; flex: none; }
 .import-toggle { margin-top: 6px; padding-left: 0; font-size: var(--fs-sm); }
-.calc-matches .row-refresh { font-size: var(--fs-md); padding: 2px 6px; text-decoration: none; }
+.calc-matches .row-refresh { padding: 3px 10px; margin-right: 6px; }
+.calc-matches .row-clear-cell { vertical-align: middle; }
 .refresh-status { margin: -4px 0 8px; font-size: var(--fs-sm); }
 /* Adding a player from badminfo.com, and their ratings under each grade. */
 .player-import { margin-top: 16px; }
@@ -1171,3 +1172,6 @@ a.small-button { display: inline-block; text-decoration: none; }
 .admin-legend dt { font-weight: 650; }
 .admin-legend dd { margin: 0; color: var(--muted); }
 .admin-note { font-size: var(--fs-xs); margin: -4px 0 8px; }
+@media (max-width: 599px) {
+  .calc-matches .row-refresh { margin-right: 0; }
+}

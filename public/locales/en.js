@@ -616,4 +616,5 @@ export default {
   'audit.d.desktop': 'Computer',
   'audit.d.bot': 'Bot',
   'account.expired': 'You were signed out, so recent changes are saved in this browser only. Sign in again to save them to your account.',
+  'groups.refreshShort': 'Update',
 };

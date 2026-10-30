@@ -616,4 +616,5 @@ export default {
   'audit.d.desktop': 'パソコン',
   'audit.d.bot': 'ボット',
   'account.expired': 'ログアウトされたため、最近の変更はこのブラウザにだけ保存されています。アカウントに保存するにはもう一度ログインしてください。',
+  'groups.refreshShort': '更新',
 };

@@ -1362,11 +1362,25 @@ async function refreshMatch(i, j, button) {
   drawGroupResult();
 }
 
+/**
+ * Whether an entry is still one of the imported tournament's: its players carry
+ * the badminfo ids the import gave them, and typing a name clears that id. A
+ * group imported before ids were kept is judged by having names at all.
+ */
+function fromTournament(i) {
+  if (!calc.source) return false;
+  const slots = calc.entries[i].slice(0, slotsPerEntry()).map((n, k) => ({ n: n.trim(), id: calc.ids[i][k] }));
+  if (!calc.ids.slice(0, calc.size).some((e) => e.some(Boolean))) return slots.some((x) => x.n);
+  return slots.every((x) => x.n && x.id);
+}
+
+/** "↻ Update" beside a match's score: only for a match between two of the tournament's entries. */
 function refreshRowButton(i, j) {
+  if (!fromTournament(i) || !fromTournament(j)) return null;
   const players = calcPlayers();
   const label = t('groups.refreshMatch', { a: players[i].name, b: players[j].name });
-  return h('button', { type: 'button', class: 'link-button row-refresh', title: label, 'aria-label': label,
-    onclick: (e) => refreshMatch(i, j, e.currentTarget) }, '↻');
+  return h('button', { type: 'button', class: 'small-button row-refresh', title: label, 'aria-label': label,
+    onclick: (e) => refreshMatch(i, j, e.currentTarget) }, h('span', { 'aria-hidden': 'true' }, '↻ '), t('groups.refreshShort'));
 }
 
 /** A scoring preset's tier name: "Junior Silver", "Junior Gold U11". */
@@ -1729,7 +1743,7 @@ function drawGroupInputs() {
               h('span', { class: 'side side-a' }, entryLabel(i, short)), h('span', { class: 'vs' }, ' – '), h('span', { class: 'side side-b' }, entryLabel(j, short))),
             Array.from({ length: gameCount }, (_, g) => h('td', { class: 'game-cell', 'data-label': gameCount > 1 ? t('groups.game', { n: g + 1 }) : null },
               scoreInput(i, j, g, 0), h('span', { class: 'dash', 'aria-hidden': 'true' }, '–'), scoreInput(i, j, g, 1))),
-            h('td', { class: 'row-clear-cell' }, calc.source ? refreshRowButton(i, j) : null, clearRowButton(i, j))))))))));
+            h('td', { class: 'row-clear-cell' }, refreshRowButton(i, j), clearRowButton(i, j))))))))));
   markWinners();
 }
 

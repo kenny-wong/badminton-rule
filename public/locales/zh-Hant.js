@@ -616,4 +616,5 @@ export default {
   'audit.d.desktop': '電腦',
   'audit.d.bot': '機械人',
   'account.expired': '你已登出，最近的改動只儲存在這個瀏覽器。請重新登入，以儲存到你的帳戶。',
+  'groups.refreshShort': '更新',
 };

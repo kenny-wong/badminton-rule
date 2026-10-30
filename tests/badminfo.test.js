@@ -112,6 +112,7 @@ test('summarizePlayer keeps the latest grade in each discipline, the BE number a
     name: 'Kim Example',
     beNumber: '1234567',
     grades: { singles: 'H', doubles: 'I', mixed: 'H' },
+    gradeDates: { singles: '2026-10-30', doubles: '2026-02-27', mixed: '2026-10-30' },
     ratings: { singles: 515, doubles: 463, mixed: 473 },
     ratingsDate: '2026-10-30',
     // Oldest first, each once; the league is left out.

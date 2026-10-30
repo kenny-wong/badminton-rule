@@ -1052,3 +1052,8 @@ input[type="date"], select {
 .tournament-chip { text-align: left; }
 .players-edit .small-button { margin-right: 8px; }
 .tournament-chip .muted { white-space: nowrap; }
+/* What an update changed: grade moves and rating differences. */
+#player-import-status p { margin: 0 0 4px; }
+#player-import-status .changes { margin: 0; padding-left: 20px; }
+#player-import-status .grade-up, #player-import-status .rating-up { color: var(--yes); font-weight: 600; }
+#player-import-status .grade-down, #player-import-status .rating-down { color: var(--no); font-weight: 600; }

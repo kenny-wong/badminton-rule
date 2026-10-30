@@ -2,7 +2,7 @@ import { DISCIPLINES, GRADES, JUNIOR_AGE_GROUPS, SEASON, checkEligibility, grade
 import { LOCALES, currentLocale, initialLocale, setLocale, t, tParts, td } from './i18n.js';
 import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, qualificationDetail, rankGroup } from './groups.js';
 import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, tournamentChoices, unscoredMatches } from './imported-group.js';
-import { MAX_PROFILES, addFromBadminfo, loadProfiles, newProfile, profileFor, saveProfiles, updateRatings } from './profiles.js';
+import { MAX_PROFILES, addFromBadminfo, loadProfiles, newProfile, playerChanges, profileFor, saveProfiles, updateFromBadminfo } from './profiles.js';
 import { renderLaws } from './laws.js';
 import { MAX_GROUPS, groupNames, loadGroups, newGroup, sanitizeState, saveGroups } from './saved-groups.js';
 
@@ -510,8 +510,30 @@ async function fetchPlayer(link) {
   }
 }
 
+/** `message`: text, or nodes such as a list of changes. */
 function showPlayerImport(message, error = false) {
   Object.assign(playerImport, { busy: false, message, error });
+}
+
+/**
+ * What an update changed, e.g. "Singles: since 30 Oct 2026, up from I to H"
+ * and "Singles rating: 510 → 515 (+5)", or a single line when nothing did.
+ */
+function describeChanges(name, changes) {
+  if (!changes.changed) return t('players.noChange', { name });
+  const disc = (d) => t(`disc.${d}`);
+  return [
+    h('p', {}, t('players.changesFor', { name })),
+    h('ul', { class: 'changes' },
+      changes.grades.map((g) => h('li', { class: `grade-${g.direction}` }, t(`players.grade${g.direction[0].toUpperCase()}${g.direction.slice(1)}`, {
+        disc: disc(g.d), from: g.from, to: g.to, date: g.since ? dateRange(g.since) : '—',
+      }))),
+      changes.ratings.map((r) => {
+        if (r.from === r.to) return h('li', {}, t('players.ratingSame', { disc: disc(r.d), n: r.to }));
+        if (r.from === null) return h('li', {}, t('players.ratingNew', { disc: disc(r.d), n: r.to }));
+        return h('li', { class: r.to > r.from ? 'rating-up' : 'rating-down' }, t('players.ratingChange', { disc: disc(r.d), from: r.from, to: r.to, diff: signed(r.to - r.from) }));
+      })),
+  ];
 }
 
 async function addPlayerFromLink() {
@@ -534,7 +556,8 @@ async function addPlayerFromLink() {
   profiles = result.profiles;
   persistProfiles();
   playerImport.link = '';
-  showPlayerImport(t(result.added ? 'players.badminfoAdded' : 'players.badminfoUpdated', { name: result.profile.name || player.name }));
+  const name = result.profile.name || player.name;
+  showPlayerImport(result.added ? t('players.badminfoAdded', { name }) : describeChanges(name, result.changes));
   drawCheck();
 }
 
@@ -543,17 +566,19 @@ async function refreshRatings(profile, button) {
   const { player, error } = await fetchPlayer(`https://badminfo.com/Player/${profile.badminfoId}`);
   if (error) showPlayerImport(t(`players.badminfoErr.${error}`), true);
   else {
-    profiles = updateRatings(profiles, player);
+    const before = profiles.find((p) => p.badminfoId === player.id) ?? profile;
+    profiles = updateFromBadminfo(profiles, player);
     persistProfiles();
-    showPlayerImport(t('players.badminfoUpdated', { name: profile.name || player.name }));
+    showPlayerImport(describeChanges(profile.name || player.name, playerChanges(before, player)));
   }
   drawCheck();
+  document.getElementById('player-import-status')?.scrollIntoView({ block: 'nearest' }); // the report sits below the table
 }
 
 function drawPlayerImport() {
   const status = document.getElementById('player-import-status');
   if (status) {
-    status.textContent = playerImport.message;
+    fill(status, playerImport.message);
     status.className = playerImport.error ? 'warning' : 'muted import-note';
     status.hidden = !playerImport.message;
   }
@@ -574,7 +599,7 @@ function playerImportPanel() {
         onkeydown: (e) => { if (e.key === 'Enter') addPlayerFromLink(); },
       }),
       h('button', { type: 'button', id: 'player-link-add', class: 'button', onclick: addPlayerFromLink }, t('players.badminfoAdd'))),
-    h('p', { id: 'player-import-status', role: 'status', hidden: true }));
+    h('div', { id: 'player-import-status', role: 'status', hidden: true }));
 }
 
 function miniEvents(result) {

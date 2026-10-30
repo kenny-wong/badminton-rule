@@ -97,16 +97,43 @@ export function profileFor(profiles, name, id = '') {
 }
 
 /**
+ * What badminfo's latest data changes for a saved player: each discipline's
+ * rating (before and after, the same when unchanged) and each grade badminfo
+ * now gives differently, with the date it took effect and whether it went up
+ * (towards A), down, or was set where there was none.
+ * @returns {{ ratings: object[], grades: object[], changed: boolean }}
+ */
+export function playerChanges(profile, player) {
+  const ratings = DISCIPLINES.filter((d) => Number.isInteger(player.ratings?.[d]))
+    .map((d) => ({ d, from: profile.ratings?.[d] ?? null, to: player.ratings[d] }));
+  const grades = DISCIPLINES.filter((d) => GRADES.includes(player.grades?.[d]) && player.grades[d] !== profile.grades?.[d])
+    .map((d) => {
+      const from = profile.grades?.[d] || '';
+      const to = player.grades[d];
+      const direction = !from ? 'set' : GRADES.indexOf(to) < GRADES.indexOf(from) ? 'up' : 'down';
+      return { d, from, to, direction, since: player.gradeDates?.[d] || player.ratingsDate || '' };
+    });
+  return { ratings, grades, changed: grades.length > 0 || ratings.some((r) => r.from !== r.to) };
+}
+
+/** A saved player with badminfo's latest ratings and grades; name, gender and date of birth stay. */
+function updated(profile, player) {
+  const grades = Object.fromEntries(DISCIPLINES.map((d) => [d, GRADES.includes(player.grades?.[d]) ? player.grades[d] : profile.grades[d]]));
+  return { ...profile, badminfoId: profile.badminfoId || player.id, grades, ratings: { ...player.ratings }, ratingsDate: player.ratingsDate ?? '' };
+}
+
+/**
  * Adds a player fetched from badminfo (see summarizePlayer() in lib/badminfo.js),
- * or, when a saved player has the same BE number, updates only their ratings.
- * @returns {{ profiles: object[], profile: object|null, added: boolean, full: boolean }}
+ * or, when a saved player has the same BE number, updates their ratings and
+ * grades only, and says what changed.
+ * @returns {{ profiles: object[], profile: object|null, added: boolean, full: boolean, changes?: object }}
  *   `full`: no room for another player, so nothing was added.
  */
 export function addFromBadminfo(profiles, player) {
   const existing = player.beNumber ? profiles.find((p) => p.beNumber === player.beNumber) : null;
   if (existing) {
-    const profile = { ...existing, badminfoId: existing.badminfoId || player.id, ratings: { ...player.ratings }, ratingsDate: player.ratingsDate ?? '' };
-    return { profiles: profiles.map((p) => (p === existing ? profile : p)), profile, added: false, full: false };
+    const profile = updated(existing, player);
+    return { profiles: profiles.map((p) => (p === existing ? profile : p)), profile, added: false, full: false, changes: playerChanges(existing, player) };
   }
   if (profiles.length >= MAX_PROFILES) return { profiles, profile: null, added: false, full: true };
   const profile = sanitizeProfiles([{
@@ -116,7 +143,7 @@ export function addFromBadminfo(profiles, player) {
   return { profiles: [...profiles, profile], profile, added: true, full: false };
 }
 
-/** Updates a saved player's ratings from badminfo, matched by their badminfo id. */
-export function updateRatings(profiles, player) {
-  return profiles.map((p) => (p.badminfoId === player.id ? { ...p, ratings: { ...player.ratings }, ratingsDate: player.ratingsDate ?? '' } : p));
+/** Updates the ratings and grades of the saved player with that badminfo id. */
+export function updateFromBadminfo(profiles, player) {
+  return profiles.map((p) => (p.badminfoId === player.id ? updated(p, player) : p));
 }

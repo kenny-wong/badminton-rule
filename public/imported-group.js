@@ -4,7 +4,7 @@
 // scores themselves. No DOM code here, so it is unit tested.
 
 import { SCORING_PRESETS } from './groups.js';
-import { namesMatch } from './profiles.js';
+import { profileFor } from './profiles.js';
 import { sanitizeState } from './saved-groups.js';
 
 export const MIN_ENTRIES = 3;
@@ -34,19 +34,22 @@ export function scoringFromScores(matches) {
   return { format, gamePoints: points, noSetting, preset };
 }
 
-// When refreshing, an entry is found by its names, ignoring case and extra
+// When refreshing, an entry is found by its players' badminfo ids when both
+// sides know them all, and otherwise by its names, ignoring case and extra
 // spaces, so "Amy  lee" typed in a slot is badminfo's "Amy Lee".
 const norm = (name) => name.trim().replace(/\s+/g, ' ').toLowerCase();
-const teamKey = (names) => names.map(norm).filter(Boolean).sort().join('|');
+const nameKey = (names) => names.map(norm).filter(Boolean).sort().join('|');
+const idKey = (ids) => (ids.length && ids.every(Boolean) ? [...ids].sort().join('|') : '');
 
 /**
- * The group's players who are saved players, as the group spells them. A saved
- * name matches partly too, so a saved "Chloe" finds "Chloe Wong" (and any other
- * Chloe); the full names show the reader which group is whose.
+ * The group's players who are saved players, as the group spells them. A
+ * player's badminfo id decides first (see profileFor()); otherwise a saved name
+ * matches partly too, so a saved "Chloe" finds "Chloe Wong" (and any other
+ * Chloe), and the full names show the reader which group is whose.
  */
-export function savedPlayersIn(group, savedNames) {
-  const saved = savedNames.filter((n) => n.trim());
-  return [...new Set(group.teams.flat().filter((n) => saved.some((s) => namesMatch(s, n))))];
+export function savedPlayersIn(group, profiles) {
+  const found = group.teams.flatMap((team, t) => team.filter((name, k) => profileFor(profiles, name, group.ids?.[t]?.[k] ?? '')));
+  return [...new Set(found)];
 }
 
 /**
@@ -82,7 +85,8 @@ export const unscoredMatches = (group) => group.matches.filter((m) => m.winner &
  * The calculator state for the group, keeping `current`'s scoring when no game
  * has been played. Each match's games are turned round where needed, since the
  * calculator keeps a match under "i-j" with i < j and entry i's points first.
- * `source` records where the group came from, for refreshing.
+ * `source` records where the group came from, for refreshing, and `ids` the
+ * players' badminfo ids, so saved players are known by id.
  */
 export function groupState(group, current = {}, { source = null } = {}) {
   const doubles = group.teams.some((t) => t.length > 1);
@@ -99,6 +103,7 @@ export function groupState(group, current = {}, { source = null } = {}) {
     event: doubles ? 'doubles' : 'singles',
     size: group.teams.length,
     entries: group.teams.map((t) => [t[0] ?? '', doubles ? t[1] ?? '' : '']),
+    ids: group.teams.map((t, i) => [group.ids?.[i]?.[0] ?? '', doubles ? group.ids?.[i]?.[1] ?? '' : '']),
     scores,
     source,
   });
@@ -106,7 +111,7 @@ export function groupState(group, current = {}, { source = null } = {}) {
 
 /**
  * Brings badminfo's latest results for the same group into the calculator.
- * Entries are matched by name rather than by place, so the calculator's order
+ * Entries are matched by player id or name rather than by place, so the calculator's order
  * and any scores typed in for matches badminfo has no result for stay as they
  * are. With `only` ("i-j") just that match is updated. Otherwise every match
  * is, and entries that have played since the import (badminfo lists only
@@ -115,17 +120,28 @@ export function groupState(group, current = {}, { source = null } = {}) {
  *   `found`: whether badminfo has the match `only` names; `scored`: whether it has a score yet.
  */
 export function mergeResults(state, group, only = null) {
-  const doubles = state.event === 'doubles';
+  const width = state.event === 'doubles' ? 2 : 1;
   const entries = state.entries.map((e) => [...e]);
-  const keys = entries.slice(0, state.size).map((e) => teamKey(e.slice(0, doubles ? 2 : 1)));
+  const ids = state.ids.map((e) => [...e]);
+  let size = state.size;
+  const sameTeam = (i, names, teamIds) => {
+    const mine = idKey(ids[i].slice(0, width));
+    const theirs = idKey(teamIds);
+    return mine && theirs ? mine === theirs : nameKey(entries[i].slice(0, width)) === nameKey(names);
+  };
   let added = 0;
-  const entryOf = (team) => {
-    let i = keys.indexOf(teamKey(team));
-    if (i < 0 && !only && keys.length < MAX_ENTRIES && team.length === (doubles ? 2 : 1)) {
-      i = keys.push(teamKey(team)) - 1;
-      entries[i] = [team[0], doubles ? team[1] : ''];
+  const entryOf = (t) => {
+    const names = group.teams[t];
+    const teamIds = (group.ids?.[t] ?? []).slice(0, names.length);
+    let i = Array.from({ length: size }, (_, k) => k).find((k) => sameTeam(k, names, teamIds)) ?? -1;
+    if (i < 0 && !only && size < MAX_ENTRIES && names.length === width) {
+      i = size++;
+      entries[i] = [names[0], width === 2 ? names[1] : ''];
+      ids[i] = ['', ''];
       added++;
     }
+    // An entry found by name learns its players' ids.
+    if (i >= 0 && teamIds.every(Boolean) && !idKey(ids[i].slice(0, width))) ids[i] = [teamIds[0] ?? '', width === 2 ? teamIds[1] ?? '' : ''];
     return i;
   };
   const scores = JSON.parse(JSON.stringify(state.scores));
@@ -133,8 +149,8 @@ export function mergeResults(state, group, only = null) {
   let found = false;
   let scored = false;
   for (const m of group.matches) {
-    const a = entryOf(group.teams[m.a]);
-    const b = entryOf(group.teams[m.b]);
+    const a = entryOf(m.a);
+    const b = entryOf(m.b);
     if (a < 0 || b < 0 || a === b) continue;
     const key = a < b ? `${a}-${b}` : `${b}-${a}`;
     if (only && key !== only) continue;
@@ -147,5 +163,5 @@ export function mergeResults(state, group, only = null) {
       changed++;
     }
   }
-  return { state: sanitizeState({ ...state, entries, size: keys.length, scores }), changed, added, found, scored };
+  return { state: sanitizeState({ ...state, entries, ids, size, scores }), changed, added, found, scored };
 }

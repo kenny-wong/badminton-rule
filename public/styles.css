@@ -1033,3 +1033,7 @@ input[type="date"], select {
 .import-toggle { margin-top: 6px; padding-left: 0; font-size: var(--fs-sm); }
 .calc-matches .row-refresh { font-size: var(--fs-md); padding: 2px 6px; text-decoration: none; }
 .refresh-status { margin: -4px 0 8px; font-size: var(--fs-sm); }
+/* Adding a player from badminfo.com, and their ratings under each grade. */
+.player-import { margin-top: 16px; }
+.players-edit .rating { display: block; margin-top: 2px; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
+.players-edit .row-refresh { font-size: var(--fs-md); text-decoration: none; }

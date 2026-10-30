@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { apiUrl, badminfoId, summarize } from '../lib/badminfo.js';
+import { apiUrl, badminfoId, playerApiUrl, summarize, summarizePlayer } from '../lib/badminfo.js';
 import { onRequestGet } from '../functions/api/tournament.js';
-import { ID, SAMPLE } from './fixtures/badminfo-sample.js';
+import { onRequestGet as getPlayer } from '../functions/api/player.js';
+import { ID, PLAYER, PLAYER_ID, SAMPLE, playerId } from './fixtures/badminfo-sample.js';
 
 test('badminfoId takes the id from a badminfo tournament link and nothing else', () => {
   assert.equal(badminfoId(`https://badminfo.com/Tournament/${ID}?t=OD&s=g`), ID);
@@ -27,6 +28,7 @@ test('summarize keeps the round-robin groups with their teams and scores', () =>
   assert.deepEqual(s.groups.map((g) => g.name), ['WD Example']);
   const [group] = s.groups;
   assert.deepEqual(group.teams, [['Amy', 'Bea'], ['Cat', 'Dee'], ['Eve', 'Fay']]);
+  assert.deepEqual(group.ids, [[playerId(0), playerId(1)], [playerId(2), playerId(3)], [playerId(4), playerId(5)]]);
   assert.deepEqual(group.matches[0], { a: 0, b: 1, games: [[21, 15], [21, 11]], winner: 'a', note: null });
   assert.deepEqual(group.matches[1].games, [[22, 20], [17, 21], [22, 20]]);
   // The same pair in another order is the same team.
@@ -94,4 +96,37 @@ test('the API reports a missing tournament and an unreachable badminfo', async (
   t.mock.method(console, 'error', () => {});
   stubFetch(t, new TypeError('network down'));
   assert.equal((await get(link)).status, 502);
+});
+
+test('badminfoId reads player links only when asked for a player', () => {
+  assert.equal(badminfoId(`https://badminfo.com/Player/${PLAYER_ID}`, 'player'), PLAYER_ID);
+  assert.equal(badminfoId(`https://badminfo.com/Player/${PLAYER_ID}`), null);
+  assert.equal(badminfoId(`https://badminfo.com/Tournament/${ID}`, 'player'), null);
+});
+
+test('summarizePlayer keeps the latest grade in each discipline, the BE number and ratings', () => {
+  assert.deepEqual(summarizePlayer(PLAYER, PLAYER_ID), {
+    source: 'badminfo',
+    id: PLAYER_ID,
+    url: `https://badminfo.com/Player/${PLAYER_ID}`,
+    name: 'Kim Example',
+    beNumber: '1234567',
+    grades: { singles: 'H', doubles: 'I', mixed: 'H' },
+    ratings: { singles: 515, doubles: 463, mixed: 473 },
+    ratingsDate: '2026-10-30',
+  });
+  const bare = summarizePlayer({ name: 'Lee', gradings: [{ key: 'Single', value: 'Z' }], beNumber: 'x', ratings: { singlesRating: -5 } }, PLAYER_ID);
+  assert.deepEqual([bare.beNumber, bare.grades.singles, bare.ratings.singles, bare.ratingsDate], ['', '', null, null]);
+  assert.equal(summarizePlayer(null, PLAYER_ID), null);
+});
+
+test('the player API fetches only badminfo, by id', async (t) => {
+  const calls = stubFetch(t, new Response(JSON.stringify(PLAYER), { status: 200 }));
+  const res = await getPlayer({ request: new Request(`https://example.test/api/player?url=${encodeURIComponent(`https://badminfo.com/Player/${PLAYER_ID}`)}`) });
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).beNumber, '1234567');
+  assert.equal(calls[0].url, playerApiUrl(PLAYER_ID));
+  const bad = await getPlayer({ request: new Request(`https://example.test/api/player?url=${encodeURIComponent(`https://badminfo.com/Tournament/${ID}`)}`) });
+  assert.equal(bad.status, 400);
+  assert.equal(calls.length, 1);
 });

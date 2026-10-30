@@ -15,7 +15,7 @@ Available in English, 繁體中文, 日本語 and Français.
 | **Grades** | See at a glance which grades (A–K) can enter each tier, split by age group and birth year. Pick a grade to list every tier it can enter. |
 | **Tiers** | Read every rule for one tier: sanction fee, match format, rest periods, grade restrictions, seeding, coaching and so on. |
 | **Compare** | Compare one rule area across all tiers, with tiers that share the same rule grouped together. |
-| **My players** | Save players (gender, date of birth plus singles, doubles and mixed grades) and see, side by side, which tiers and age groups each can enter, and why. You can share a player with a link. |
+| **My players** | Save players (gender, date of birth plus singles, doubles and mixed grades) and see, side by side, which tiers and age groups each can enter, and why. You can share a player with a link, or add one from their [badminfo.com](https://badminfo.com) link with their grades and badminfo ratings (↻ updates the ratings later). |
 | **Groups** | Learn how a round-robin group is ranked and how ties are broken. Then work out a group yourself: drag in saved players (singles or doubles), enter scores game by game, and get the standings, a results grid, and an analysis of what each player needs, down to "C must score at least 4 points". Save up to six groups in the browser so they are still there after a reload. Or paste a tournament link from [badminfo.com](https://badminfo.com) to fill in a real group's pairs and results: it lists the groups your saved players are in ("WS Group A (Chloe Wong)"; a player saved as just "Chloe" finds every Chloe), and ↻ buttons update one match or the whole group as new results come in. |
 | **Laws** | The basic Laws of Badminton in plain words, from the BWF: the court, scoring, serving, where to serve from, in or out, faults, lets and breaks, with diagrams. It also shows the new 15-point scoring that starts on 4 January 2027. |
 | **Notes** | Read the general notes from the matrix and how this guide was put together. |
@@ -26,7 +26,7 @@ You can also search the rules in any of the four languages.
 
 Saved players, saved groups and your language choice are stored only in your browser's `localStorage`. None of them are sent to a server, and the site has no accounts or tracking. As a result, saved players don't follow you to another device or browser.
 
-The one exception is importing a group: the badminfo link you paste goes to this site's server, which fetches that tournament's results from badminfo and sends back only its round-robin groups. Nothing is stored.
+The one exception is badminfo: a tournament or player link you paste goes to this site's server, which fetches that tournament's groups or that player's name, grades, ratings and BE number from badminfo and sends them back. Nothing is stored on the server. A player added this way keeps their badminfo id and BE number in your browser, so adding them again only updates their ratings and imported draws find them by id even if their name is spelled differently.
 
 ## Sources
 
@@ -51,7 +51,7 @@ A few things the documents don't spell out, and how the site handles them:
 
 ## Development
 
-The site is plain HTML, CSS and JavaScript modules, hosted on Cloudflare Pages. There is no build step and the site has no npm dependencies; Wrangler (Cloudflare's CLI) is the only dev dependency. The only server code is one Cloudflare Pages Function, `functions/api/tournament.js`, which imports groups from badminfo; there is no database.
+The site is plain HTML, CSS and JavaScript modules, hosted on Cloudflare Pages. There is no build step and the site has no npm dependencies; Wrangler (Cloudflare's CLI) is the only dev dependency. The only server code is two Cloudflare Pages Functions, `functions/api/tournament.js` and `functions/api/player.js`, which read tournaments and players from badminfo; there is no database.
 
 ```sh
 npm install       # once, to install Wrangler
@@ -81,8 +81,9 @@ public/
   _headers            security headers (Content-Security-Policy and so on)
 functions/api/
   tournament.js       GET /api/tournament?url=<badminfo link>: a tournament's round-robin groups
+  player.js           GET /api/player?url=<badminfo player link>: a player's grades, ratings and BE number
 lib/
-  badminfo.js         reads badminfo's tournament JSON (only the id is taken from the link)
+  badminfo.js         reads badminfo's tournament and player JSON (only the id is taken from the link)
   http.js             JSON responses for the API
 tests/                node:test suites for all of the above
 wrangler.jsonc        Cloudflare Pages project settings

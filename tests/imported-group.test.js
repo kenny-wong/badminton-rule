@@ -7,6 +7,9 @@ import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, save
 import { SAMPLE } from './fixtures/badminfo-sample.js';
 
 const match = (a, b, ...games) => ({ a, b, games, winner: null, note: null });
+const ID1 = 'aaaaaaaa-0000-0000-0000-000000000001';
+const ID2 = 'bbbbbbbb-0000-0000-0000-000000000002';
+const ID3 = 'cccccccc-0000-0000-0000-000000000003';
 
 test('scoringFromScores reads the format, points and setting from the scores', () => {
   assert.deepEqual(scoringFromScores([match(0, 1, [21, 15], [21, 11]), match(0, 2, [22, 20], [17, 21], [22, 20])]),
@@ -84,11 +87,19 @@ test('importLabels shortens names to the event code and group letter', () => {
 
 test('savedPlayersIn lists the group’s saved players by their full names', () => {
   const group = { teams: [['Amy Lee', 'Bea Wu'], ['Chloe Wong', 'Dee Ho'], ['Chloe Lam', 'Eve']] };
-  assert.deepEqual(savedPlayersIn(group, ['amy  lee', 'Dee Ho', 'Zoe', '']), ['Amy Lee', 'Dee Ho']);
+  const saved = (...names) => names.map((name) => ({ name, badminfoId: '' }));
+  assert.deepEqual(savedPlayersIn(group, saved('amy  lee', 'Dee Ho', 'Zoe', '')), ['Amy Lee', 'Dee Ho']);
   // A first name alone finds every player with it.
-  assert.deepEqual(savedPlayersIn(group, ['Chloe']), ['Chloe Wong', 'Chloe Lam']);
-  assert.deepEqual(savedPlayersIn(group, ['Chloe', 'chloe wong']), ['Chloe Wong', 'Chloe Lam']);
+  assert.deepEqual(savedPlayersIn(group, saved('Chloe')), ['Chloe Wong', 'Chloe Lam']);
+  assert.deepEqual(savedPlayersIn(group, saved('Chloe', 'chloe wong')), ['Chloe Wong', 'Chloe Lam']);
   assert.deepEqual(savedPlayersIn(group, []), []);
+});
+
+test('savedPlayersIn knows a player by badminfo id first', () => {
+  const kim = { name: 'Kim Lee', badminfoId: ID1 };
+  const group = { teams: [['Kimberley Lee', 'Bea Wu'], ['Kim Lee', 'Dee Ho']], ids: [[ID1, ''], [ID2, '']] };
+  // The id finds Kimberley Lee; the other Kim Lee has a different id, so isn't her.
+  assert.deepEqual(savedPlayersIn(group, [kim]), ['Kimberley Lee']);
 });
 
 test('groupState keeps the draw’s names and records the source', () => {
@@ -96,6 +107,8 @@ test('groupState keeps the draw’s names and records the source', () => {
   const s = groupState({ teams: [['Amy Lee', 'Bea Wu'], ['Cat Ng', 'Dee Ho'], ['Eve', 'Fay']], matches: [] }, {}, { source });
   assert.deepEqual(s.entries[0], ['Amy Lee', 'Bea Wu']);
   assert.deepEqual(s.source, source);
+  const withIds = groupState({ teams: [['Amy'], ['Bea'], ['Cat']], ids: [[ID1], ['not-an-id'], ['']], matches: [] });
+  assert.deepEqual(withIds.ids.slice(0, 3), [[ID1, ''], ['', ''], ['', '']]);
 });
 
 test('findGroup finds the same draw in a refreshed tournament', () => {
@@ -144,6 +157,21 @@ describe('mergeResults', () => {
   test('reports a match it cannot find, for instance after a rename', () => {
     const renamed = { ...state, entries: [['A'], ['Bob'], ['C'], ...state.entries.slice(3)] };
     assert.equal(mergeResults(renamed, latest, '0-1').found, false);
+  });
+
+  test('matches entries by player id before names, and learns ids for entries found by name', () => {
+    const imported = groupState({ teams: [['Amy'], ['Bea'], ['Cat']], ids: [[ID1], [ID2], ['']], matches: [] });
+    // badminfo now spells Amy differently, and has Cat's id.
+    const now = { teams: [['Amy Lee'], ['Bea'], ['Cat']], ids: [[ID1], [ID2], [ID3]], matches: [match(0, 2, [21, 9]), match(1, 2, [21, 8])] };
+    const r = mergeResults(imported, now);
+    assert.equal(r.added, 0);
+    assert.deepEqual(r.state.scores, { '0-2': [[21, 9]], '1-2': [[21, 8]] });
+    assert.equal(r.state.ids[2][0], ID3);
+    // A different player with Bea's name (another id) is a new entry, not Bea.
+    const other = { teams: [['Bea'], ['Amy']], ids: [['dddddddd-0000-0000-0000-000000000004'], [ID1]], matches: [match(0, 1, [21, 3])] };
+    const r2 = mergeResults(imported, other);
+    assert.equal(r2.added, 1);
+    assert.deepEqual(r2.state.entries[3], ['Bea', '']);
   });
 
   test('stops adding entries at six', () => {

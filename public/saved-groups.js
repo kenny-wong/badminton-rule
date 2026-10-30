@@ -19,6 +19,7 @@ export function newGroup(state) {
 }
 
 const score = (v) => (Number.isInteger(v) && v >= 0 && v <= 99 ? v : null);
+const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /** Where an imported group came from (badminfo's tournament page and the draw), so its results can be refreshed. */
 function sanitizeSource(raw) {
@@ -48,6 +49,11 @@ export function sanitizeState(raw) {
     entries: Array.from({ length: SLOTS }, (_, i) => [0, 1].map((k) => {
       const name = s.entries?.[i]?.[k];
       return typeof name === 'string' ? name.slice(0, MAX_NAME) : '';
+    })),
+    // Each name's badminfo player id, when it came from an imported draw ('' otherwise).
+    ids: Array.from({ length: SLOTS }, (_, i) => [0, 1].map((k) => {
+      const id = s.ids?.[i]?.[k];
+      return typeof id === 'string' && GUID.test(id) ? id : '';
     })),
     withdrew: Array.from({ length: SLOTS }, (_, i) => s.withdrew?.[i] === true),
     scores,

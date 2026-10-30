@@ -2,7 +2,7 @@ import { DISCIPLINES, GRADES, JUNIOR_AGE_GROUPS, SEASON, checkEligibility, grade
 import { LOCALES, currentLocale, initialLocale, setLocale, t, tParts, td } from './i18n.js';
 import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, qualificationDetail, rankGroup } from './groups.js';
 import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, unscoredMatches } from './imported-group.js';
-import { loadProfiles, newProfile, profileFor, saveProfiles } from './profiles.js';
+import { MAX_PROFILES, addFromBadminfo, loadProfiles, newProfile, profileFor, saveProfiles, updateRatings } from './profiles.js';
 import { renderLaws } from './laws.js';
 import { MAX_GROUPS, groupNames, loadGroups, newGroup, sanitizeState, saveGroups } from './saved-groups.js';
 
@@ -447,7 +447,13 @@ function profileActions(profile) {
       } }, t('players.remove')),
     ];
   }
+  const name = profile.name || t('players.thisPlayer');
   return [
+    // Players added from a badminfo link (they keep its id) can update their ratings.
+    profile.badminfoId
+      ? h('button', { type: 'button', class: 'link-button row-refresh', title: t('players.ratingsRefresh', { name }), 'aria-label': t('players.ratingsRefresh', { name }),
+        onclick: (e) => refreshRatings(profile, e.currentTarget) }, '↻')
+      : null,
     h('button', { type: 'button', class: 'link-button', onclick: (e) => copyLink(profile, e.currentTarget) }, t('players.copyLink')),
     h('button', { type: 'button', class: 'link-button danger', onclick: () => {
       if (!confirm(t('players.confirmRemove', { name: profile.name || t('players.thisPlayer') }))) return;
@@ -484,8 +490,103 @@ function profileRow(profile) {
       oninput: (e) => { profile.dob = e.target.value; update(); } })),
     DISCIPLINES.map((d) => h('td', { 'data-label': t(`disc.${d}`) },
       h('select', { 'aria-label': label(t(`disc.${d}`)), onchange: (e) => { profile.grades[d] = e.target.value; update(); } },
-        gradeOptions(profile.grades[d])))),
+        gradeOptions(profile.grades[d])),
+      ratingTag(profile, d))),
     h('td', { class: 'row-actions' }, profileActions(profile)));
+}
+
+/** badminfo's rating for the discipline, under its grade, for players added from badminfo. */
+function ratingTag(profile, d) {
+  const n = profile.ratings?.[d];
+  if (!Number.isInteger(n)) return null;
+  const title = [t('players.ratingTitle'), profile.ratingsDate ? dateRange(profile.ratingsDate) : null].filter(Boolean).join(' · ');
+  return h('span', { class: 'rating', title }, t('players.ratingShort', { n }));
+}
+
+// Adding a player from their badminfo link (badminfo.com/Player/<id>):
+// /api/player fetches their name, BE number, grades and ratings. A player whose
+// BE number is already saved has only their ratings updated. The BE number is
+// kept to spot that and never shown; the badminfo id finds the player in
+// imported draws and lets the ↻ on their row update their ratings.
+const playerImport = { link: '', busy: false, message: '', error: false };
+
+/** { player } or { error }. */
+async function fetchPlayer(link) {
+  try {
+    const res = await fetch(`/api/player?url=${encodeURIComponent(link)}`, { cache: 'no-cache' });
+    const body = await res.json().catch(() => ({}));
+    if (res.ok && body.id) return { player: body };
+    return { error: ['badLink', 'notFound'].includes(body.error) ? body.error : 'unavailable' };
+  } catch {
+    return { error: 'unavailable' };
+  }
+}
+
+function showPlayerImport(message, error = false) {
+  Object.assign(playerImport, { busy: false, message, error });
+}
+
+async function addPlayerFromLink() {
+  const link = playerImport.link.trim();
+  if (!link || playerImport.busy) return;
+  Object.assign(playerImport, { busy: true, message: t('players.badminfoLoading'), error: false });
+  drawPlayerImport();
+  const { player, error } = await fetchPlayer(link);
+  if (error) {
+    showPlayerImport(t(`players.badminfoErr.${error}`), true);
+    drawPlayerImport();
+    return;
+  }
+  const result = addFromBadminfo(profiles, player);
+  if (result.full) {
+    showPlayerImport(t('players.badminfoFull', { n: MAX_PROFILES }), true);
+    drawPlayerImport();
+    return;
+  }
+  profiles = result.profiles;
+  persistProfiles();
+  playerImport.link = '';
+  showPlayerImport(t(result.added ? 'players.badminfoAdded' : 'players.badminfoUpdated', { name: result.profile.name || player.name }));
+  drawCheck();
+}
+
+async function refreshRatings(profile, button) {
+  button.disabled = true;
+  const { player, error } = await fetchPlayer(`https://badminfo.com/Player/${profile.badminfoId}`);
+  if (error) showPlayerImport(t(`players.badminfoErr.${error}`), true);
+  else {
+    profiles = updateRatings(profiles, player);
+    persistProfiles();
+    showPlayerImport(t('players.badminfoUpdated', { name: profile.name || player.name }));
+  }
+  drawCheck();
+}
+
+function drawPlayerImport() {
+  const status = document.getElementById('player-import-status');
+  if (status) {
+    status.textContent = playerImport.message;
+    status.className = playerImport.error ? 'warning' : 'muted import-note';
+    status.hidden = !playerImport.message;
+  }
+  const button = document.getElementById('player-link-add');
+  if (button) button.disabled = playerImport.busy;
+}
+
+function playerImportPanel() {
+  return h('div', { class: 'saved-groups import-panel player-import' },
+    h('p', { class: 'palette-title' }, t('players.badminfoTitle')),
+    h('p', { class: 'muted import-hint' }, t('players.badminfoHint')),
+    h('div', { class: 'calc-controls import-form' },
+      h('label', { class: 'visually-hidden', for: 'player-link' }, t('players.badminfoLabel')),
+      h('input', {
+        type: 'text', id: 'player-link', inputmode: 'url', autocomplete: 'off', spellcheck: 'false', value: playerImport.link,
+        placeholder: 'https://badminfo.com/Player/…',
+        oninput: (e) => { playerImport.link = e.target.value; },
+        onkeydown: (e) => { if (e.key === 'Enter') addPlayerFromLink(); },
+      }),
+      h('button', { type: 'button', id: 'player-link-add', class: 'button', onclick: addPlayerFromLink }, t('players.badminfoAdd'))),
+    h('p', { id: 'player-import-status', role: 'status', hidden: true }));
 }
 
 function miniEvents(result) {
@@ -621,6 +722,7 @@ function drawCheck() {
       drawCheck();
       view.querySelector(`.players-edit tbody tr:nth-child(${profiles.length}) input`)?.select();
     } }, t('players.add')),
+    playerImportPanel(),
     h('h2', { class: 'section-title compare-title' }, t('players.compareTitle')),
     h('div', { id: 'player-compare', 'aria-live': 'polite' }),
     h('details', { class: 'assumptions' },
@@ -631,6 +733,7 @@ function drawCheck() {
         h('li', {}, t('check.how3', { groups })),
         h('li', {}, t('check.how4')),
         h('li', {}, t('check.how5')))));
+  drawPlayerImport();
   renderPlayerComparison();
 }
 
@@ -649,6 +752,7 @@ const calc = {
   format: 'bestOf3',
   event: 'singles',
   entries: GROUP_LETTERS.map(() => ['', '']),
+  ids: GROUP_LETTERS.map(() => ['', '']), // each name's badminfo player id, from an imported draw or a saved player
   withdrew: GROUP_LETTERS.map(() => false),
   picked: null,
   outlook: { entry: null, places: 1 }, // goal defaults to finishing 1st
@@ -660,23 +764,26 @@ const calc = {
   source: null, // where an imported group came from ({ link, event, name }), so its results can be refreshed
 };
 
-/** Entries holding a saved player count as the reader's own; a saved "Chloe" also counts "Chloe Wong" (profileFor). */
+/**
+ * Entries holding a saved player count as the reader's own. A name's badminfo
+ * id decides first; otherwise a saved "Chloe" also counts "Chloe Wong" (profileFor).
+ */
 function isOwnEntry(i) {
-  return calc.entries[i].slice(0, slotsPerEntry()).some((n) => profileFor(profiles, n));
+  return calc.entries[i].slice(0, slotsPerEntry()).some((n, k) => profileFor(profiles, n, calc.ids[i][k]));
 }
 
-/** A saved player's gender ('M', 'F' or ''), looked up by name, partly matched as above. */
-function genderOf(name) {
-  return profileFor(profiles, name)?.gender || '';
+/** A saved player's gender ('M', 'F' or ''), found as above. */
+function genderOf(name, id = '') {
+  return profileFor(profiles, name, id)?.gender || '';
 }
 
-const genderClass = (name) => GENDER_CLASS[genderOf(name)] ?? '';
+const genderClass = (name, id) => GENDER_CLASS[genderOf(name, id)] ?? '';
 
 /** An entry's name for display, each saved player coloured by gender: "Amy / Ben". */
 function entryLabel(i) {
-  const names = calc.entries[i].slice(0, slotsPerEntry()).map((n) => n.trim()).filter(Boolean);
-  if (!names.length) return GROUP_LETTERS[i];
-  return names.map((n, k) => [k ? ' / ' : null, genderClass(n) ? h('span', { class: genderClass(n) }, n) : n]);
+  const slots = calc.entries[i].slice(0, slotsPerEntry()).map((n, k) => ({ n: n.trim(), id: calc.ids[i][k] })).filter((s) => s.n);
+  if (!slots.length) return GROUP_LETTERS[i];
+  return slots.map(({ n, id }, k) => [k ? ' / ' : null, genderClass(n, id) ? h('span', { class: genderClass(n, id) }, n) : n]);
 }
 
 /** Loads an example's scores; names already placed in the group stay put. */
@@ -760,7 +867,7 @@ function startNewGroup() {
   persistGroups();
   Object.assign(calc, {
     example: null, picked: null, importedName: null, source: null, size: 4, scores: {}, outlook: { entry: null, places: 1 },
-    entries: GROUP_LETTERS.map(() => ['', '']), withdrew: GROUP_LETTERS.map(() => false),
+    entries: GROUP_LETTERS.map(() => ['', '']), ids: GROUP_LETTERS.map(() => ['', '']), withdrew: GROUP_LETTERS.map(() => false),
   });
   renderGroups();
 }
@@ -834,8 +941,6 @@ async function fetchTournament(link) {
   }
 }
 
-const savedNames = () => profiles.map((p) => p.name);
-
 /** Whether the calculator holds this group of the loaded tournament. */
 function isOpenGroup(group) {
   const s = calc.source;
@@ -864,7 +969,7 @@ async function refreshTournament() {
     const group = findGroup(tournament, calc.source);
     if (group) {
       const { state, changed, added } = mergeResults(sanitizeState(calc), group);
-      Object.assign(calc, { entries: state.entries, size: state.size, scores: state.scores, example: null });
+      Object.assign(calc, { entries: state.entries, ids: state.ids, size: state.size, scores: state.scores, example: null });
       importer.note = [t('groups.refreshAllDone', { n: changed }), added ? t('groups.refreshAdded', { n: added }) : null].filter(Boolean).join(' ');
       renderGroups();
       return;
@@ -934,9 +1039,8 @@ function dateRange(start, end) {
 /** The group buttons, "WS Group A (Amy)": by default only groups with the reader's saved players. */
 function importChoices(tour) {
   const labels = importLabels(tour.groups);
-  const names = savedNames();
-  const hasSaved = names.some((n) => n.trim());
-  const mine = tour.groups.map((g) => savedPlayersIn(g, names));
+  const hasSaved = profiles.some((p) => p.name.trim() || p.badminfoId);
+  const mine = tour.groups.map((g) => savedPlayersIn(g, profiles));
   const filtering = hasSaved && !importer.showAll;
   const shown = tour.groups.flatMap((g, i) => (!filtering || mine[i].length ? [i] : []));
   const label = (i) => (mine[i].length ? `${labels[i]} (${mine[i].join(', ')})` : labels[i]);
@@ -1037,8 +1141,11 @@ function placedNames() {
 /** Puts a player in slot "entry-position", moving them if they were already placed. */
 function placePlayer(name, slot) {
   const [i, k] = slot.split('-').map(Number);
-  calc.entries.forEach((entry) => entry.forEach((n, pos) => { if (n.trim() === name) entry[pos] = ''; }));
+  calc.entries.forEach((entry, e) => entry.forEach((n, pos) => {
+    if (n.trim() === name) [entry[pos], calc.ids[e][pos]] = ['', ''];
+  }));
   calc.entries[i][k] = name;
+  calc.ids[i][k] = profiles.find((p) => p.name.trim() === name)?.badminfoId ?? '';
   calc.picked = null;
   drawGroupInputs();
   drawGroupResult();
@@ -1119,11 +1226,11 @@ function playerPalette() {
 function slotInput(i, k) {
   const letter = GROUP_LETTERS[i];
   return h('input', {
-    type: 'text', class: ['slot-input', genderClass(calc.entries[i][k]), calc.picked ? 'awaiting' : ''].filter(Boolean).join(' '), 'data-slot': `${i}-${k}`,
+    type: 'text', class: ['slot-input', genderClass(calc.entries[i][k], calc.ids[i][k]), calc.picked ? 'awaiting' : ''].filter(Boolean).join(' '), 'data-slot': `${i}-${k}`,
     value: calc.entries[i][k], maxlength: 30, placeholder: t('groups.slotEmpty'),
     'aria-label': `${t('players.name')} ${letter}${slotsPerEntry() > 1 ? ` (${k + 1})` : ''}`,
     onclick: () => { if (calc.picked) placePlayer(calc.picked, `${i}-${k}`); },
-    oninput: (e) => { calc.entries[i][k] = e.target.value; drawGroupResult(); },
+    oninput: (e) => { calc.entries[i][k] = e.target.value; calc.ids[i][k] = ''; drawGroupResult(); }, // a typed name is no longer the draw's player
     onchange: () => drawGroupInputs(),
   });
 }
@@ -1229,6 +1336,7 @@ function drawGroupInputs() {
           h('h4', {}, t(calc.event === 'doubles' ? 'groups.pairs' : 'groups.players')),
           h('button', { type: 'button', class: 'link-button', onclick: () => {
             calc.entries = GROUP_LETTERS.map(() => ['', '']);
+            calc.ids = GROUP_LETTERS.map(() => ['', '']);
             calc.picked = null;
             drawGroupInputs();
             drawGroupResult();

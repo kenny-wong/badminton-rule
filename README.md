@@ -38,7 +38,7 @@ Saved players, saved groups and your language choice are stored in your browser'
 - [Badminton England General Regulations for Tournaments 2026](https://images.gc.badmintonenglandservices.co.uk/53012730-1ee3-11f1-a060-b1b720430faa.pdf), regulations 6.13–6.23 and 8.4–8.5, for group draws, ranking, tie-breaks, withdrawals and retirements.
 - BWF General Competition Regulations, regulation 16.2 (ranking in groups). BE notes that its group rules match it.
 - [badminfo.com](https://badminfo.com) for imported group results. It collects them from Badminton England's tournament pages; the official draw takes precedence.
-- Badminton England's tournament pages ([be.tournamentsoftware.com](https://be.tournamentsoftware.com)) for when each imported match is due, its court and how long it took. The site's server reads them accepting only necessary cookies.
+- Badminton England's tournament pages ([be.tournamentsoftware.com](https://be.tournamentsoftware.com)) for when each imported match is due to start; the page marks it on time or delayed from when its score appears. The site's server reads them accepting only necessary cookies.
 
 Translations of the rule text are provided for convenience; the English wording of the PDF is the authority. Where the PDF is blank, the site shows it blank (for example, the Masters seeding cell).
 

@@ -554,3 +554,55 @@ export function shortNames(names, keep = () => false) {
   const firstTry = new Map(full.map((n) => [n, short(n)]));
   return new Map(full.map((n) => [n, full.some((o) => o !== n && firstTry.get(o) === firstTry.get(n)) ? n : firstTry.get(n)]));
 }
+
+/**
+ * Badminton England's average match length in minutes for a group game, from
+ * the T&Cs matrix's "Average game times": 3 games to 21 = 30 (group games),
+ * 3 games to 15 = 25, 1 game to 21 = 15, 3 games to 11 = 15. A one-game match
+ * to 15 or 11 isn't listed, so the one-game figure, 15, is used.
+ */
+export function averageMatchMinutes(format, points) {
+  if (format === 'oneGame') return 15;
+  return { 21: 30, 15: 25, 11: 15 }[points] ?? 30;
+}
+
+/** A UK wall-clock date and time ("2026-10-24", "09:00") as a moment in time. */
+export function londonTime(date, time) {
+  const [y, mo, d] = date.split('-').map(Number);
+  const [hh, mm] = time.split(':').map(Number);
+  const guess = Date.UTC(y, mo - 1, d, hh, mm);
+  // London is UTC+0 or +1; read the offset at that moment and take it off.
+  const name = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', timeZoneName: 'shortOffset' })
+    .formatToParts(new Date(guess)).find((p) => p.type === 'timeZoneName')?.value ?? 'GMT';
+  const offset = Number(/GMT([+-]\d+)/.exec(name)?.[1] ?? 0);
+  return guess - offset * 3600000;
+}
+
+export const GRACE_MINUTES = 5;
+// Past this, the score most likely arrived while no one was watching (or the match
+// was never played), so the lateness says nothing: no status.
+export const MAX_DELAY_MINUTES = 180;
+
+/**
+ * Whether a match kept to its estimated time. Its estimated end is the
+ * scheduled start plus BE's average length. A score that appeared no later
+ * than GRACE_MINUTES after that end is on time; a later one, or none yet once
+ * that time has passed, is delayed by the minutes since the estimated end.
+ * Before then, for a score whose arrival wasn't seen, or more than
+ * MAX_DELAY_MINUTES late, there's nothing to say.
+ * @param {{ start: number, minutes: number, scoredAt?: number|null, played: boolean, now: number }} m times in ms
+ * @returns {{ status: 'onTime'|'delayed'|null, delay: number }}
+ */
+export function matchTiming({ start, minutes, scoredAt = null, played, now }) {
+  const end = start + minutes * 60000;
+  const grace = GRACE_MINUTES * 60000;
+  const delayed = (at) => {
+    const delay = Math.max(0, Math.round((at - end) / 60000));
+    return delay > MAX_DELAY_MINUTES ? { status: null, delay: 0 } : { status: 'delayed', delay };
+  };
+  if (played) {
+    if (!scoredAt) return { status: null, delay: 0 };
+    return scoredAt <= end + grace ? { status: 'onTime', delay: 0 } : delayed(scoredAt);
+  }
+  return now > end + grace ? delayed(now) : { status: null, delay: 0 };
+}

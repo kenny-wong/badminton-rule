@@ -1,6 +1,6 @@
 import { DISCIPLINES, GRADES, JUNIOR_AGE_GROUPS, SEASON, checkEligibility, gradeChartRows, juniorAgeGroup, parseDate } from './eligibility.js';
 import { LOCALES, currentLocale, initialLocale, setLocale, t, tParts, td } from './i18n.js';
-import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, qualificationDetail, rankGroup, shortNames } from './groups.js';
+import { CAPS, SCORING_PRESETS, averageMatchMinutes, exampleScores, gameWinner, londonTime, matchTiming, matchWinner, openGameCount, pairings, qualification, qualificationDetail, rankGroup, shortNames } from './groups.js';
 import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, scheduleFor, tournamentChoices, tournamentPreset, unscoredMatches } from './imported-group.js';
 import { MAX_PROFILES, addFromBadminfo, favouritesFirst, loadProfiles, moveProfile, toggleFavourite, loadSyncOwner, mergeProfiles, newProfile, playerChanges, profileFor, sanitizeProfiles, saveProfiles, saveSyncOwner, updateFromBadminfo } from './profiles.js';
 import { renderLaws } from './laws.js';
@@ -1979,6 +1979,7 @@ function drawGroupResult() {
   const box = document.getElementById('calc-result');
   if (!box) return;
   autosaveGroup(); // every change to the calculator ends here
+  redrawMatchWhen();
   const short = shortNameMap();
   // Ranked with the short names, so the steps ("how it was worked out") use them too.
   const result = rankGroup(calcPlayers().map((p, i) => ({ ...p, name: shortEntryName(i, short) })), calcMatches(), calc.format, { rules: scoringRules() });
@@ -2203,27 +2204,43 @@ function noteSeen(keys) {
   for (const key of keys) calc.seen[key] = now;
 }
 
-/** "Due 09:00 · Court 3", or "09:00 start · 12 min · Court 3 · score seen about 09:20", under a pairing. */
+/**
+ * "Est. start 09:00 (on time)" in green, or "(delayed 12 min)" in red, under a
+ * pairing: the scheduled start from BE's pages, and whether the score arrived
+ * within five minutes of the estimated end (start + BE's average match time
+ * for the group's scoring), or hasn't by then (matchTiming()).
+ */
 function matchWhen(i, j) {
   const src = calc.source;
   if (!src) return null;
   const names = (k) => calc.entries[k].slice(0, slotsPerEntry()).map((n) => n.trim()).filter(Boolean);
   const m = schedule.be === src.be ? scheduleFor(schedule.matches, names(i), names(j), src) : null;
+  if (!m?.time) return null;
   const locale = currentLocale() === 'en' ? 'en-GB' : currentLocale();
-  const parts = [];
-  if (m) {
-    const days = src.start && src.end && src.start !== src.end;
-    const at = days ? `${new Date(`${m.date}T12:00:00Z`).toLocaleDateString(locale, { weekday: 'short', timeZone: 'UTC' })} ${m.time}` : m.time;
-    const played = m.duration || m.games.length;
-    parts.push(t(played ? 'groups.startedAt' : 'groups.dueAt', { time: at }));
-    if (m.duration) parts.push(t('groups.took', { n: m.duration }));
-    const court = /\s-\s*(\d+)$/.exec(m.court)?.[1];
-    if (court || m.court) parts.push(court ? t('groups.court', { n: court }) : m.court);
-  }
+  const days = src.start && src.end && src.start !== src.end;
+  const at = days ? `${new Date(`${m.date}T12:00:00Z`).toLocaleDateString(locale, { weekday: 'short', timeZone: 'UTC' })} ${m.time}` : m.time;
   const seen = calc.seen?.[`${i}-${j}`];
-  if (seen) parts.push(t('groups.scoreSeen', { time: new Date(seen).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false }) }));
-  return parts.length ? h('span', { class: 'match-when', title: m?.court || null }, parts.join(' · ')) : null;
+  const { status, delay } = matchTiming({
+    start: londonTime(m.date, m.time),
+    minutes: averageMatchMinutes(calc.format, calc.gamePoints),
+    played: Boolean(matchWinner(pairGames(i, j), calc.format, scoringRules())),
+    scoredAt: seen ? Date.parse(seen) : null,
+    now: Date.now(),
+  });
+  return h('span', { class: ['match-when', status ? `when-${status}` : ''].filter(Boolean).join(' '), 'data-pair': `${i}-${j}` },
+    t('groups.estStart', { time: at }),
+    status ? [' ', h('span', { class: 'when-status' }, status === 'onTime' ? t('groups.onTime') : t('groups.delayed', { n: delay }))] : null);
 }
+
+/** Redraws the lines under the pairings: after a score is typed or cleared, and every minute, as a delay keeps growing. */
+function redrawMatchWhen() {
+  document.querySelectorAll('.calc-matches .match-when[data-pair]').forEach((el) => {
+    const [i, j] = el.dataset.pair.split('-').map(Number);
+    const fresh = matchWhen(i, j);
+    if (fresh) el.replaceWith(fresh);
+  });
+}
+setInterval(redrawMatchWhen, 60000);
 
 /** Lets a web address break after its dots and slashes, so it can't run off a phone. */
 function softBreaks(text) {

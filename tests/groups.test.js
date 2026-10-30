@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, rankGroup, shortNames } from '../public/groups.js';
+import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, rankGroup, shortNames, averageMatchMinutes, londonTime, matchTiming } from '../public/groups.js';
 import { readFileSync } from 'node:fs';
 
 const players = (...ids) => ids.map((id) => ({ id, name: id }));
@@ -294,4 +294,37 @@ test('shortNames shows the first name and the surname\u2019s initial, and full n
   assert.equal(shown.get('Jay Moss'), 'Jay Moss');
   assert.equal(shown.get('Jay Mann'), 'Jay Mann');
   assert.equal(shortNames(['Amy  Mary Lee']).get('Amy  Mary Lee'), 'Amy L.');
+});
+
+test('averageMatchMinutes follows BE’s average game times', () => {
+  assert.equal(averageMatchMinutes('bestOf3', 21), 30);
+  assert.equal(averageMatchMinutes('bestOf3', 15), 25);
+  assert.equal(averageMatchMinutes('bestOf3', 11), 15);
+  assert.equal(averageMatchMinutes('oneGame', 21), 15);
+  assert.equal(averageMatchMinutes('oneGame', 15), 15);
+});
+
+test('londonTime reads UK clock times in summer and winter', () => {
+  assert.equal(new Date(londonTime('2026-10-24', '09:00')).toISOString(), '2026-10-24T08:00:00.000Z'); // BST
+  assert.equal(new Date(londonTime('2026-11-01', '09:00')).toISOString(), '2026-11-01T09:00:00.000Z'); // GMT
+});
+
+test('matchTiming: on time within five minutes of the estimated end, delayed after', () => {
+  const start = Date.parse('2026-11-01T09:00:00Z');
+  const min = 60000;
+  const at = (m) => start + m * min;
+  // Estimated end 09:15 (15 minutes).
+  assert.deepEqual(matchTiming({ start, minutes: 15, played: true, scoredAt: at(18), now: at(30) }), { status: 'onTime', delay: 0 });
+  assert.deepEqual(matchTiming({ start, minutes: 15, played: true, scoredAt: at(20), now: at(30) }), { status: 'onTime', delay: 0 });
+  assert.deepEqual(matchTiming({ start, minutes: 15, played: true, scoredAt: at(27), now: at(30) }), { status: 'delayed', delay: 12 });
+  assert.deepEqual(matchTiming({ start, minutes: 15, played: true, scoredAt: null, now: at(90) }), { status: null, delay: 0 });
+  // No score yet: nothing to say until five minutes after the estimated end, then delayed and counting.
+  assert.deepEqual(matchTiming({ start, minutes: 15, played: false, now: at(10) }), { status: null, delay: 0 });
+  assert.deepEqual(matchTiming({ start, minutes: 15, played: false, now: at(20) }), { status: null, delay: 0 });
+  assert.deepEqual(matchTiming({ start, minutes: 15, played: false, now: at(21) }), { status: 'delayed', delay: 6 });
+  assert.deepEqual(matchTiming({ start, minutes: 30, played: false, now: at(75) }), { status: 'delayed', delay: 45 });
+  // Over three hours late: a score seen long afterwards (a past event reopened), or a match never played.
+  assert.deepEqual(matchTiming({ start, minutes: 15, played: true, scoredAt: at(15 + 180), now: at(300) }), { status: 'delayed', delay: 180 });
+  assert.deepEqual(matchTiming({ start, minutes: 15, played: true, scoredAt: at(15 + 181), now: at(300) }), { status: null, delay: 0 });
+  assert.deepEqual(matchTiming({ start, minutes: 15, played: false, now: at(9000) }), { status: null, delay: 0 });
 });

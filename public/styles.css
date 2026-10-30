@@ -1179,3 +1179,7 @@ a.small-button { display: inline-block; text-decoration: none; }
 @media (max-width: 599px) {
   .calc-matches .match-when { white-space: normal; }
 }
+/* On time in green, delayed in red. */
+.calc-matches .match-when.when-onTime { color: var(--yes); }
+.calc-matches .match-when.when-delayed { color: var(--no); }
+.calc-matches .match-when .when-status { font-weight: 650; }

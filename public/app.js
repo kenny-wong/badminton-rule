@@ -2374,7 +2374,7 @@ function drawAdmin() {
       h('h3', { class: 'sub-title' }, t('admin.visitors')),
       table('admin-table', [t('admin.colIp'), t('admin.colCountry'), t('admin.colAccount'), t('admin.colDevice'), t('admin.colViews'), t('admin.colEvents'), t('admin.colFirst'), t('admin.colLast')].map((c) => h('th', { scope: 'col' }, c)),
         body.visitors.map((v) => h('tr', {},
-          h('td', {}, ipLink(v.ip)), h('td', {}, v.country), h('td', {}, v.emails || h('span', { class: 'muted' }, t('admin.anonymous'))),
+          h('td', {}, ipLink(v.ip)), h('td', {}, v.country), h('td', {}, accountCell(v.email)),
           h('td', {}, (v.devices ?? []).map(agentText).join(' / ')),
           h('td', { class: 'num' }, v.views), h('td', { class: 'num' }, v.events), h('td', { class: 'nowrap' }, when(v.firstAt)), h('td', { class: 'nowrap' }, when(v.lastAt))))),
       h('h3', { class: 'sub-title' }, t('admin.pages')),

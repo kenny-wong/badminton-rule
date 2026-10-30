@@ -160,11 +160,13 @@ const sameName = (a, b) => words(a).join(' ') === words(b).join(' ');
 export function mergeProfiles(primary, extra) {
   const out = [...primary];
   for (const p of extra) {
-    if (out.length >= MAX_PROFILES) break;
-    const dup = out.some((q) => (p.badminfoId && q.badminfoId === p.badminfoId)
+    const i = out.findIndex((q) => (p.badminfoId && q.badminfoId === p.badminfoId)
       || (p.beNumber && q.beNumber === p.beNumber)
       || (p.name.trim() && sameName(p.name, q.name)));
-    if (!dup) out.push(p);
+    // A player starred in either list stays starred.
+    if (i >= 0) {
+      if (p.favourite && !out[i].favourite) out[i] = { ...out[i], favourite: true };
+    } else if (out.length < MAX_PROFILES) out.push(p);
   }
   return out;
 }

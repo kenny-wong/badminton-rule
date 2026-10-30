@@ -224,3 +224,10 @@ describe('ordering and favourites', () => {
     assert.equal(sanitizeProfiles([{ name: 'A', favourite: 'yes' }])[0].favourite, false);
   });
 });
+
+test('mergeProfiles keeps a star from either list', () => {
+  const account = [{ ...newProfile('Amy'), id: 'a' }, { ...newProfile('Ben'), id: 'b', favourite: true }];
+  const local = [{ ...newProfile('amy'), favourite: true }, newProfile('Ben')];
+  const merged = mergeProfiles(account, local);
+  assert.deepEqual(merged.map((p) => [p.id, p.favourite]), [['a', true], ['b', true]]);
+});

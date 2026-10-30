@@ -413,22 +413,44 @@ function persistProfiles() {
 const account = { google: false, user: null, admin: false, syncError: false, loginFailed: new URLSearchParams(location.search).get('login') === 'failed' };
 let pushTimer = null;
 
+let pushing = false;
+
 function schedulePush() {
   clearTimeout(pushTimer);
   pushTimer = setTimeout(pushProfiles, 800);
 }
 
 async function pushProfiles() {
+  pushTimer = null;
   if (!account.user) return;
+  pushing = true;
   try {
     const res = await fetch('/api/players', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ players: profiles }) });
-    if (res.status === 401) Object.assign(account, { user: null, admin: false });
+    // Signed out meanwhile (the session ended): say so, rather than quietly keeping changes in this browser only.
+    if (res.status === 401) Object.assign(account, { user: null, admin: false, expired: true });
     account.syncError = !res.ok && res.status !== 401;
   } catch {
     account.syncError = true;
+  } finally {
+    pushing = false;
   }
   drawAccount();
 }
+
+// Another device may have changed the account's players since this page loaded:
+// look again whenever the page comes back into view, and every minute while it
+// is open, so a change made elsewhere shows up here and isn't overwritten.
+let lastPull = 0;
+async function refreshFromAccount() {
+  if (!account.user || pushTimer || pushing || document.hidden || Date.now() - lastPull < 5000) return;
+  lastPull = Date.now();
+  const before = JSON.stringify(profiles);
+  await pullProfiles();
+  if (JSON.stringify(profiles) !== before && location.hash.startsWith('#/check')) drawCheck();
+}
+document.addEventListener('visibilitychange', refreshFromAccount);
+window.addEventListener('focus', refreshFromAccount);
+setInterval(refreshFromAccount, 60000);
 
 /**
  * Brings the account's players into this browser. When this browser last synced
@@ -487,7 +509,8 @@ function drawAccount() {
     return fill(box,
       h('p', {}, t('account.pitch')),
       h('a', { class: 'small-button', href: '/api/auth/google' }, t('account.login')),
-      account.loginFailed ? h('p', { class: 'warning' }, t('account.loginFailed')) : null);
+      account.loginFailed ? h('p', { class: 'warning' }, t('account.loginFailed')) : null,
+      account.expired ? h('p', { class: 'warning' }, t('account.expired')) : null);
   }
   fill(box,
     h('p', {}, t('account.signedIn', { email: account.user.email }), ' ',
@@ -600,6 +623,7 @@ function startRowDrag(e, profile) {
     if (to === from) return;
     profiles = moveProfile(profiles, from, to);
     persistProfiles();
+    track('player_reorder', { name: profile.name });
     drawCheck();
   };
   handle.addEventListener('pointermove', move);
@@ -614,6 +638,7 @@ function moveByKey(e, profile) {
   const from = profiles.findIndex((p) => p.id === profile.id);
   profiles = moveProfile(profiles, from, from + step);
   persistProfiles();
+  track('player_reorder', { name: profile.name });
   drawCheck();
   view.querySelector(`tr[data-id="${profile.id}"] .drag-handle`)?.focus();
 }
@@ -621,6 +646,8 @@ function moveByKey(e, profile) {
 function markFavourite(profile) {
   profiles = toggleFavourite(profiles, profile.id);
   persistProfiles();
+  const changed = profiles.find((p) => p.id === profile.id);
+  track('player_favourite', { ...playerInfo(changed), favourite: changed.favourite });
   drawCheck();
   view.querySelector(`tr[data-id="${profile.id}"] .fav-toggle`)?.focus();
 }
@@ -966,7 +993,7 @@ const calc = {
   ids: GROUP_LETTERS.map(() => ['', '']), // each name's badminfo player id, from an imported draw or a saved player
   withdrew: GROUP_LETTERS.map(() => false),
   picked: null,
-  outlook: { entry: null, places: 1, open: false }, // goal defaults to finishing 1st; the full list of cases starts folded
+  outlook: { entry: null, places: 1, open: null }, // goal defaults to finishing 1st; open: the reader's own fold of the cases (null: automatic)
   gamePoints: 21, // points per game: decides when a game is finished, and projects unplayed matches
   noSetting: false, // true: first to the target wins the game, even from 20 all
   preset: 'bwf', // which tournament's scoring is applied; 'custom' once changed by hand
@@ -1833,6 +1860,12 @@ function outlookPanel() {
   const name = nameOf[entry];
   const goal = t(calc.outlook.places === 1 ? 'groups.goalFirst' : 'groups.goalTop2');
   const detail = qualificationDetail(players, matches, calc.format, entry, calc.outlook.places, { rules: scoringRules() });
+  // Every case is listed open once more than a third of the matches have a result, folded before;
+  // a fold the reader opens or closes stays that way (calc.outlook.open).
+  const decided = matches.filter((m) => matchWinner(m.games, calc.format, scoringRules())).length;
+  const autoOpen = decided > matches.length / 3;
+  const listOpen = calc.outlook.open ?? autoOpen;
+  const onListToggle = (e) => { calc.outlook.open = e.target.open === autoOpen ? null : e.target.open; };
   if (detail.status === 'done') return null;
 
   let body;
@@ -1850,7 +1883,7 @@ function outlookPanel() {
     body = [
       h('p', {}, t('groups.outlookOpen', { name, goal })),
       outlookCounts(detail.rows.map((r) => r.result.type)),
-      h('details', { class: 'outlook-more', open: calc.outlook.open, ontoggle: (e) => { calc.outlook.open = e.target.open; } },
+      h('details', { class: 'outlook-more', open: listOpen, ontoggle: onListToggle },
         h('summary', {}, t('groups.outlookShowAll', { n: detail.rows.length })),
       table('outlook-table', [h('th', { scope: 'col' }, t('groups.outlookIf')), h('th', { scope: 'col' }, t('groups.outlookResult'))],
         detail.rows.map((row) => h('tr', {},
@@ -1872,7 +1905,7 @@ function outlookPanel() {
       body = [
         h('p', {}, t('groups.outlookOpen', { name, goal })),
         outlookCounts(q.rows.map((r) => r.result)),
-        h('details', { class: 'outlook-more', open: calc.outlook.open, ontoggle: (e) => { calc.outlook.open = e.target.open; } },
+        h('details', { class: 'outlook-more', open: listOpen, ontoggle: onListToggle },
           h('summary', {}, t('groups.outlookShowAll', { n: q.rows.length })),
         h('p', { class: 'muted outlook-note' }, t('groups.tooManyRows')),
         table('outlook-table', [h('th', { scope: 'col' }, t('groups.outlookIf')), h('th', { scope: 'col' }, t('groups.outlookResult'))],
@@ -2176,33 +2209,98 @@ async function renderAdmin(q = '') {
   } catch {
     return fill(box, h('p', { class: 'warning' }, t('admin.denied')));
   }
+  adminView = { q, body };
+  drawAdmin();
+}
+
+// The audit trail's actions, in the order the legend lists them.
+const AUDIT_ACTIONS = ['view', 'player_add', 'player_edit', 'player_remove', 'player_update', 'player_favourite', 'player_reorder',
+  'tournament_load', 'group_import', 'group_refresh', 'match_refresh', 'group_save', 'group_delete', 'example_load', 'login', 'logout', 'login_failed'];
+const TAB_ROUTES = ['grades', 'tier', 'compare', 'check', 'groups', 'laws', 'notes'];
+let adminView = null; // { q, body }: the last audit trail fetched
+const adminOpen = new Set(); // collapsed rows the reader opened
+
+/** The audit trail, with repeats (same minute, IP, account and action) folded into one row. */
+function drawAdmin() {
+  const box = document.getElementById('admin-body');
+  if (!box || !adminView) return;
+  const { q, body } = adminView;
   const locale = currentLocale() === 'en' ? 'en-GB' : currentLocale();
   const when = (iso) => (iso ? new Date(iso).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' }) : '');
-  const detailText = (d) => Object.entries(d).map(([k, v]) => `${k}: ${v && typeof v === 'object' ? Object.values(v).map((x) => x || '–').join('/') : v}`).join(' · ');
+  const tournaments = new Map(body.events.filter((e) => e.action === 'tournament_load' && e.detail.tournament).map((e) => [e.detail.tournament, e.detail.name]));
+  const examples = { two: 'groups.exTwo', circle: 'groups.exCircle', points: 'groups.exPoints' };
+  const routeName = (r) => (r === 'admin' ? t('admin.title') : r === 'search' ? t('audit.searchPage') : TAB_ROUTES.includes(r) ? t(`tab.${r}`) : r ?? '?');
+  const value = (k, v) => {
+    if (k === 'route') return routeName(v);
+    if (k === 'source') return t(`audit.v.${v}`);
+    if (k === 'grades') return DISCIPLINES.map((d) => `${t(`discShort.${d}`)} ${v[d] || '–'}`).join(' ');
+    if (k === 'tournament') return tournaments.get(v) ?? `${v.slice(0, 8)}…`;
+    if (k === 'badminfoId') return `${v.slice(0, 8)}…`;
+    if (k === 'favourite') return t(v ? 'audit.v.on' : 'audit.v.off');
+    if (k === 'example') return examples[v] ? t(examples[v]) : v;
+    return v;
+  };
+  // A loaded tournament's "name" is the tournament's, already shown under Tournament.
+  const detailText = (e) => Object.entries(e.detail).filter(([k]) => !(e.action === 'tournament_load' && k === 'name'))
+    .map(([k, v]) => t('audit.pair', { k: t(`audit.f.${k}`), v: value(k, v) })).join(' · ');
+  const actionName = (a) => (AUDIT_ACTIONS.includes(a) ? t(`audit.${a}`) : a);
+  const actionCell = (a) => h('span', { class: 'audit-action', title: AUDIT_ACTIONS.includes(a) ? t(`audit.${a}Desc`) : a }, actionName(a));
+  const agentText = (g) => (g ? [t(`audit.d.${g.device}`), g.os, g.browser].filter(Boolean).join(' · ') : '');
   const ipLink = (ip) => h('button', { type: 'button', class: 'link-button', onclick: () => renderAdmin(ip) }, ip || '?');
+  const accountCell = (email) => (email ? h('button', { type: 'button', class: 'link-button', onclick: () => renderAdmin(email) }, email) : h('span', { class: 'muted' }, t('admin.anonymous')));
+
+  // Fold repeats: the same action by the same IP and account within one minute.
+  const groups = new Map();
+  for (const e of body.events) {
+    const key = [e.at.slice(0, 16), e.ip, e.email ?? '', e.action].join('|');
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(e);
+  }
+  const eventRows = [...groups].flatMap(([key, list]) => {
+    const [e] = list;
+    const open = adminOpen.has(key);
+    const toggle = list.length > 1
+      ? h('button', { type: 'button', class: 'link-button audit-toggle', 'aria-expanded': String(open),
+        onclick: () => { if (open) adminOpen.delete(key); else adminOpen.add(key); drawAdmin(); } },
+        open ? t('admin.collapse') : t('admin.expand', { n: list.length }))
+      : null;
+    const sameDetail = list.every((x) => detailText(x) === detailText(e));
+    const main = h('tr', { class: list.length > 1 ? 'audit-group' : null },
+      h('td', { class: 'nowrap' }, when(e.at)), h('td', {}, ipLink(e.ip), e.country ? ` ${e.country}` : ''),
+      h('td', {}, accountCell(e.email)), h('td', {}, agentText(e.agent)),
+      h('td', { class: 'nowrap' }, actionCell(e.action), list.length > 1 ? h('span', { class: 'audit-count' }, ` ×${list.length}`) : null),
+      h('td', {}, open || sameDetail ? detailText(e) : [detailText(e), ' …'], toggle ? [' ', toggle] : null));
+    if (!open) return [main];
+    return [main, ...list.slice(1).map((x) => h('tr', { class: 'audit-sub' },
+      h('td', { class: 'nowrap muted' }, new Date(x.at).toLocaleTimeString(locale)), h('td', {}), h('td', {}), h('td', {}, agentText(x.agent)),
+      h('td', {}), h('td', {}, detailText(x))))];
+  });
+
   const tt = body.totals ?? {};
-  const search = h('input', { type: 'text', id: 'admin-q', value: q, placeholder: t('admin.search'), onkeydown: (e) => { if (e.key === 'Enter') renderAdmin(e.target.value.trim()); } });
+  const search = h('input', { type: 'text', id: 'admin-q', value: q, placeholder: t('admin.search'), onkeydown: (ev) => { if (ev.key === 'Enter') renderAdmin(ev.target.value.trim()); } });
   fill(box,
     h('p', { class: 'admin-totals' }, t('admin.totals', { ips: tt.ips ?? 0, accounts: tt.accounts ?? 0, views: tt.views ?? 0, today: tt.viewsToday ?? 0, events: tt.events ?? 0 })),
     h('div', { class: 'calc-controls import-form' },
       h('label', { class: 'visually-hidden', for: 'admin-q' }, t('admin.search')), search,
       h('button', { type: 'button', class: 'button', onclick: () => renderAdmin(search.value.trim()) }, t('admin.filter')),
       q ? h('button', { type: 'button', class: 'link-button', onclick: () => renderAdmin('') }, t('admin.clear')) : null),
+    h('details', { class: 'admin-legend' },
+      h('summary', {}, t('admin.legend')),
+      h('dl', {}, AUDIT_ACTIONS.map((a) => [h('dt', {}, t(`audit.${a}`)), h('dd', {}, t(`audit.${a}Desc`))]))),
     h('h3', { class: 'sub-title' }, q ? t('admin.eventsFor', { q }) : t('admin.events')),
-    table('admin-table', [t('admin.colTime'), t('admin.colIp'), t('admin.colAccount'), t('admin.colAction'), t('admin.colDetail')].map((c) => h('th', { scope: 'col' }, c)),
-      body.events.map((e) => h('tr', {},
-        h('td', { class: 'nowrap' }, when(e.at)), h('td', {}, ipLink(e.ip), e.country ? ` ${e.country}` : ''),
-        h('td', {}, e.email ? h('button', { type: 'button', class: 'link-button', onclick: () => renderAdmin(e.email) }, e.email) : h('span', { class: 'muted' }, t('admin.anonymous'))),
-        h('td', { class: 'nowrap' }, e.action), h('td', {}, detailText(e.detail))))),
+    h('p', { class: 'muted admin-note' }, t('admin.foldNote')),
+    table('admin-table', [t('admin.colTime'), t('admin.colIp'), t('admin.colAccount'), t('admin.colDevice'), t('admin.colAction'), t('admin.colDetail')].map((c) => h('th', { scope: 'col' }, c)),
+      eventRows),
     q ? null : [
       h('h3', { class: 'sub-title' }, t('admin.visitors')),
-      table('admin-table', [t('admin.colIp'), t('admin.colCountry'), t('admin.colAccount'), t('admin.colViews'), t('admin.colEvents'), t('admin.colFirst'), t('admin.colLast')].map((c) => h('th', { scope: 'col' }, c)),
+      table('admin-table', [t('admin.colIp'), t('admin.colCountry'), t('admin.colAccount'), t('admin.colDevice'), t('admin.colViews'), t('admin.colEvents'), t('admin.colFirst'), t('admin.colLast')].map((c) => h('th', { scope: 'col' }, c)),
         body.visitors.map((v) => h('tr', {},
           h('td', {}, ipLink(v.ip)), h('td', {}, v.country), h('td', {}, v.emails || h('span', { class: 'muted' }, t('admin.anonymous'))),
+          h('td', {}, (v.devices ?? []).map((g, k) => [k ? h('br') : null, agentText(g)])),
           h('td', { class: 'num' }, v.views), h('td', { class: 'num' }, v.events), h('td', { class: 'nowrap' }, when(v.firstAt)), h('td', { class: 'nowrap' }, when(v.lastAt))))),
       h('h3', { class: 'sub-title' }, t('admin.pages')),
       table('admin-table', [t('admin.colPage'), t('admin.colViews'), t('admin.colIps')].map((c) => h('th', { scope: 'col' }, c)),
-        body.pages.map((p) => h('tr', {}, h('td', {}, p.route ?? '?'), h('td', { class: 'num' }, p.views), h('td', { class: 'num' }, p.ips)))),
+        body.pages.map((pg) => h('tr', {}, h('td', { title: pg.route ?? '' }, routeName(pg.route)), h('td', { class: 'num' }, pg.views), h('td', { class: 'num' }, pg.ips)))),
     ]);
 }
 

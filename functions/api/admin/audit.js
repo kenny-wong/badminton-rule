@@ -3,6 +3,7 @@
 // latest events, optionally only those of one IP or account.
 import { fail, json, serverError } from '../../../lib/http.js';
 import { isAdmin } from '../../../lib/session.js';
+import { describeAgent } from '../../../lib/audit.js';
 
 const LIMIT = 300;
 
@@ -11,7 +12,7 @@ export async function onRequestGet({ request, env, data }) {
   const q = (new URL(request.url).searchParams.get('q') ?? '').trim().slice(0, 100);
   const db = env.DB;
   try {
-    const [totals, visitors, pages, events] = await db.batch([
+    const [totals, visitors, pages, events, agents] = await db.batch([
       db.prepare(`SELECT COUNT(DISTINCT ip) AS ips, COUNT(DISTINCT user_id) AS accounts, SUM(action = 'view') AS views, COUNT(*) AS events,
         SUM(action = 'view' AND at >= strftime('%Y-%m-%dT00:00:00Z', 'now')) AS viewsToday FROM audit_log`),
       db.prepare(`SELECT ip, MAX(country) AS country, GROUP_CONCAT(DISTINCT email) AS emails, SUM(action = 'view') AS views,
@@ -19,14 +20,23 @@ export async function onRequestGet({ request, env, data }) {
       db.prepare(`SELECT json_extract(detail, '$.route') AS route, COUNT(*) AS views, COUNT(DISTINCT ip) AS ips
         FROM audit_log WHERE action = 'view' GROUP BY route ORDER BY views DESC`),
       q
-        ? db.prepare('SELECT at, ip, country, email, action, detail FROM audit_log WHERE ip = ?1 OR email = ?1 ORDER BY id DESC LIMIT ?2').bind(q, LIMIT)
-        : db.prepare('SELECT at, ip, country, email, action, detail FROM audit_log ORDER BY id DESC LIMIT ?').bind(LIMIT),
+        ? db.prepare('SELECT at, ip, country, email, action, detail, user_agent FROM audit_log WHERE ip = ?1 OR email = ?1 ORDER BY id DESC LIMIT ?2').bind(q, LIMIT)
+        : db.prepare('SELECT at, ip, country, email, action, detail, user_agent FROM audit_log ORDER BY id DESC LIMIT ?').bind(LIMIT),
+      db.prepare('SELECT ip, user_agent FROM audit_log GROUP BY ip, user_agent ORDER BY MAX(id) DESC LIMIT 2000'),
     ]);
+    // Each visitor's devices, described once each.
+    const devices = new Map();
+    for (const { ip, user_agent: ua } of agents.results) {
+      const list = devices.get(ip) ?? [];
+      const agent = describeAgent(ua);
+      if (!list.some((a) => a.device === agent.device && a.os === agent.os && a.browser === agent.browser)) list.push(agent);
+      devices.set(ip, list);
+    }
     return json({
       totals: totals.results[0],
-      visitors: visitors.results,
+      visitors: visitors.results.map((v) => ({ ...v, devices: devices.get(v.ip) ?? [] })),
       pages: pages.results,
-      events: events.results.map((e) => ({ ...e, detail: JSON.parse(e.detail || '{}') })),
+      events: events.results.map(({ user_agent: ua, ...e }) => ({ ...e, detail: JSON.parse(e.detail || '{}'), agent: describeAgent(ua) })),
     }, 200, { 'Cache-Control': 'no-store' });
   } catch (err) {
     return serverError(err, 'admin audit');

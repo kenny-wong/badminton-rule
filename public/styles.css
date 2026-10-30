@@ -1158,3 +1158,16 @@ a.small-button { display: inline-block; text-decoration: none; }
   .players-edit tr.fav-row { background: color-mix(in srgb, #e0a100 7%, transparent); }
   .players-edit tr.fav-row > td { background: none; }
 }
+
+/* The audit trail: folded repeats, the legend. */
+.admin-table tr.audit-group > td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.admin-table tr.audit-sub > td { font-size: var(--fs-xs); color: var(--muted); border-top: 0; }
+.audit-count { font-weight: 700; color: var(--accent); }
+.audit-action { border-bottom: 1px dotted var(--muted); cursor: help; }
+.audit-toggle { font-size: var(--fs-xs); }
+.admin-legend { margin: 10px 0; font-size: var(--fs-sm); }
+.admin-legend > summary { cursor: pointer; color: var(--accent); }
+.admin-legend dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 8px 0 0; }
+.admin-legend dt { font-weight: 650; }
+.admin-legend dd { margin: 0; color: var(--muted); }
+.admin-note { font-size: var(--fs-xs); margin: -4px 0 8px; }

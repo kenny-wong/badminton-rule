@@ -1,7 +1,7 @@
 import { DISCIPLINES, GRADES, JUNIOR_AGE_GROUPS, SEASON, checkEligibility, gradeChartRows, juniorAgeGroup, parseDate } from './eligibility.js';
 import { LOCALES, currentLocale, initialLocale, setLocale, t, tParts, td } from './i18n.js';
 import { CAPS, SCORING_PRESETS, exampleScores, gameWinner, matchWinner, openGameCount, pairings, qualification, qualificationDetail, rankGroup } from './groups.js';
-import { fitsCalculator, groupState, unscoredMatches } from './imported-group.js';
+import { fitsCalculator, groupState, importLabels, unscoredMatches } from './imported-group.js';
 import { loadProfiles, newProfile, saveProfiles } from './profiles.js';
 import { renderLaws } from './laws.js';
 import { MAX_GROUPS, groupNames, loadGroups, newGroup, sanitizeState, saveGroups } from './saved-groups.js';
@@ -840,13 +840,14 @@ async function loadTournament() {
   drawImport();
 }
 
-function importGroup(group) {
+/** `label` tells the group apart from same-named groups in other events; it names the group when saved. */
+function importGroup(group, index, label) {
   if (!activeGroup() && hasUnsavedWork() && !confirm(t('groups.confirmSwitch'))) return;
   savedGroups.active = null;
   persistGroups();
   applyGroupState(groupState(group, calc));
-  calc.importedName = group.name;
-  importer.loaded = { name: group.name, unscored: unscoredMatches(group) };
+  calc.importedName = label;
+  importer.loaded = { index, name: label, unscored: unscoredMatches(group) };
   renderGroups();
   document.getElementById('calc-inputs')?.scrollIntoView({ block: 'start' });
 }
@@ -870,7 +871,9 @@ function drawImport() {
   else if (importer.error) content = h('p', { class: 'warning', role: 'alert' }, t(`groups.importErr.${importer.error}`));
   else if (tour) {
     const tooBig = tour.groups.some((g) => !fitsCalculator(g));
-    const loaded = importer.loaded;
+    // Still on screen only while the calculator holds the imported group.
+    const loaded = importer.loaded && calc.importedName === importer.loaded.name ? importer.loaded : null;
+    const labels = importLabels(tour.groups);
     content = [
       h('p', { class: 'import-tournament' },
         h('a', { href: tour.url, rel: 'noopener', target: '_blank' }, tour.name || tour.url), ' ',
@@ -878,14 +881,14 @@ function drawImport() {
       tour.groups.length
         ? [
           h('p', { class: 'muted import-pick' }, t('groups.importPick')),
-          h('div', { class: 'palette-chips' }, tour.groups.map((g) => h('button', {
-            type: 'button', class: 'chip-button', disabled: !fitsCalculator(g), 'aria-pressed': String(loaded?.name === g.name && calc.importedName === g.name),
-            onclick: () => importGroup(g),
-          }, g.name, ' ', h('span', { class: 'muted' }, `(${g.teams.length})`)))),
+          h('div', { class: 'palette-chips' }, tour.groups.map((g, i) => h('button', {
+            type: 'button', class: 'chip-button', disabled: !fitsCalculator(g), 'aria-pressed': String(loaded?.index === i),
+            onclick: () => importGroup(g, i, labels[i]),
+          }, labels[i], ' ', h('span', { class: 'muted' }, `(${g.teams.length})`)))),
           tooBig ? h('p', { class: 'muted import-note' }, t('groups.importSizeNote')) : null,
         ]
         : h('p', { class: 'muted' }, t('groups.importNone')),
-      loaded && calc.importedName === loaded.name
+      loaded
         ? h('p', { class: 'import-note' }, t('groups.importLoaded', { name: loaded.name, scoring: scoringSummary() }),
           loaded.unscored ? [' ', loaded.unscored === 1 ? t('groups.importUnscoredOne') : t('groups.importUnscoredMany', { n: loaded.unscored })] : null)
         : null,

@@ -33,6 +33,17 @@ export function scoringFromScores(matches) {
   return { format, gamePoints: points, noSetting, preset };
 }
 
+/**
+ * A name for each group that tells it apart from the others. Draws are often
+ * just "Group A" in every event, so when any name is used twice, every group
+ * whose name doesn't already say its event gets it in front: "MS Open · Group A".
+ */
+export function importLabels(groups) {
+  const names = groups.map((g) => g.name);
+  if (new Set(names).size === names.length) return names;
+  return groups.map((g) => (g.event && !g.name.includes(g.event) ? `${g.event} · ${g.name}` : g.name));
+}
+
 /** Matches with a winner but no score, such as a walkover: they are left blank. */
 export const unscoredMatches = (group) => group.matches.filter((m) => m.winner && !m.games.length).length;
 

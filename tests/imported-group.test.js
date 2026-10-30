@@ -3,7 +3,7 @@ import { test } from 'node:test';
 
 import { summarize } from '../lib/badminfo.js';
 import { rankGroup } from '../public/groups.js';
-import { fitsCalculator, groupState, scoringFromScores, unscoredMatches } from '../public/imported-group.js';
+import { fitsCalculator, groupState, importLabels, scoringFromScores, unscoredMatches } from '../public/imported-group.js';
 import { SAMPLE } from './fixtures/badminfo-sample.js';
 
 const match = (a, b, ...games) => ({ a, b, games, winner: null, note: null });
@@ -66,4 +66,15 @@ test('fitsCalculator takes groups of 3 to 6 entries', () => {
   assert.equal(fitsCalculator({ teams: teams(2) }), false);
   assert.equal(fitsCalculator({ teams: teams(6) }), true);
   assert.equal(fitsCalculator({ teams: teams(7) }), false);
+});
+
+test('importLabels adds the events once group names repeat across events', () => {
+  const groups = [
+    { event: 'MS Open', name: 'Group A' }, { event: 'MS Open', name: 'Group B' },
+    { event: 'WD Open', name: 'Group A' }, { event: 'XD Open', name: 'XD Open' },
+  ];
+  assert.deepEqual(importLabels(groups), ['MS Open · Group A', 'MS Open · Group B', 'WD Open · Group A', 'XD Open']);
+  // Names that are already different stay as they are.
+  const distinct = [{ event: 'OD Chichester', name: 'OD Chi - Group A' }, { event: 'XD Chichester', name: 'XD Chi - Group A' }];
+  assert.deepEqual(importLabels(distinct), ['OD Chi - Group A', 'XD Chi - Group A']);
 });

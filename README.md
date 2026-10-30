@@ -16,6 +16,7 @@ Available in English, 繁體中文, 日本語 and Français.
 | **Tiers** | Read every rule for one tier: sanction fee, match format, rest periods, grade restrictions, seeding, coaching and so on. |
 | **Compare** | Compare one rule area across all tiers, with tiers that share the same rule grouped together. |
 | **My players** | Save players (gender, date of birth plus singles, doubles and mixed grades) and see, side by side, which tiers and age groups each can enter, and why. Add a player from their [badminfo.com](https://badminfo.com) link with their grades and badminfo ratings ("↻ Update rating" refreshes the ratings and grades later and says what changed, such as "Singles: since 30 Oct 2026, up from I to H"). Drag ⠿ to put your players in order, and star ☆ favourites: they stay at the top and are starred ★ on the Groups page. Optionally, sign in with Google to keep your saved players on all your devices. |
+| **Analysis** | Appears once a player has been added from a badminfo.com link. Shows how they are progressing: each discipline's rating over time (chart), grade and national rank; key findings; recent form; results against badminfo's win chances (as underdog, even or favourite) with their best wins and most surprising losses; deciding and tight games; results by tournament level, stage and year; grade history and the grading period's prediction beside BE's qualifying matches; BE's ranking and win–loss; partners, opponents met most, medals and every tournament played. |
 | **Groups** | Learn how a round-robin group is ranked and how ties are broken. Then work out a group yourself: drag in saved players (singles or doubles), enter scores game by game, and get the standings, a results grid, and an analysis of what each player needs, down to "C must score at least 4 points". Save up to six groups in the browser so they are still there after a reload. Or paste a tournament link from [badminfo.com](https://badminfo.com) to fill in a real group's pairs and results: it lists the groups your saved players are in ("WS Group A (Chloe Wong)"; a player saved as just "Chloe" finds every Chloe), and "↻ Update" beside the matches brings in new results for the whole group. Under each match: its estimated start time (from Badminton England's own pages), and whether its score came in on time or how many minutes late it is. Players added from badminfo can be picked to list their tournaments (the next few, or past ones too) and open one without its link. |
 | **Laws** | The basic Laws of Badminton in plain words, from the BWF: the court, scoring, serving, where to serve from, in or out, faults, lets and breaks, with diagrams. It also shows the new 15-point scoring that starts on 4 January 2027. |
 | **Notes** | Read the general notes from the matrix and how this guide was put together. |
@@ -28,7 +29,9 @@ Saved players, saved groups and your language choice are stored in your browser'
 
 **Signing in is optional.** If you sign in with Google on the My players page, your saved players are also kept on the site's server under your account (your Google email and name), so they appear on your other devices. On the first sign-in in a browser, the players already saved there join the ones in your account. Signing out leaves them in the browser.
 
-**Audit trail.** To see how the site is used and to stop misuse, the server records each page visit and action (adding, editing or removing a player, loading a tournament, importing, refreshing or saving a group, signing in and out) with the time, the visitor's IP address and country, browser, and Google email when signed in. For players it records the name, whether it came from a badminfo link or was typed in, the badminfo id and the grades, never the date of birth. Only the site's owners can see the records (the Audit trail page, for accounts listed in `ADMIN_EMAILS`, which also shows the kind of device, system and browser read from each visit), and they are kept until deleted.
+**Audit trail.** To see how the site is used and to stop misuse, the server records each page visit and action (adding, editing or removing a player, loading a tournament, importing, refreshing or saving a group, analysing a player, signing in and out) with the time, the visitor's IP address and country, browser, and Google email when signed in. For players it records the name, whether it came from a badminfo link or was typed in, the badminfo id and the grades, never the date of birth. Only the site's owners can see the records (the Audit trail page, for accounts listed in `ADMIN_EMAILS`, which also shows the kind of device, system and browser read from each visit), and they are kept until deleted.
+
+**Analysis.** Opening a player's Analysis page sends their badminfo id to this site's server, which reads their match history from badminfo and their player page (ranking and win–loss) from Badminton England's site, accepting only necessary cookies, and sends the results back. The audit trail records which player was analysed (name and badminfo id).
 
 **badminfo.** A tournament or player link you paste goes to this site's server, which fetches that tournament's groups or that player's name, grades, ratings and BE number from badminfo and sends them back. A player added this way keeps their badminfo id and BE number, gets a link to their badminfo.com page, so adding them again only updates their ratings and grades, and imported draws find them by id even if their name is spelled differently.
 
@@ -38,6 +41,7 @@ Saved players, saved groups and your language choice are stored in your browser'
 - [Badminton England General Regulations for Tournaments 2026](https://images.gc.badmintonenglandservices.co.uk/53012730-1ee3-11f1-a060-b1b720430faa.pdf), regulations 6.13–6.23 and 8.4–8.5, for group draws, ranking, tie-breaks, withdrawals and retirements.
 - BWF General Competition Regulations, regulation 16.2 (ranking in groups). BE notes that its group rules match it.
 - [badminfo.com](https://badminfo.com) for imported group results. It collects them from Badminton England's tournament pages; the official draw takes precedence.
+- Badminton England's player pages on [be.tournamentsoftware.com](https://be.tournamentsoftware.com) for each analysed player's national ranking, grading-period qualifying matches and win–loss.
 - Badminton England's tournament pages ([be.tournamentsoftware.com](https://be.tournamentsoftware.com)) for when each imported match is due to start; the page marks it on time or delayed from when its score appears. The site's server reads them accepting only necessary cookies.
 
 Translations of the rule text are provided for convenience; the English wording of the PDF is the authority. Where the PDF is blank, the site shows it blank (for example, the Masters seeding cell).
@@ -56,7 +60,7 @@ A few things the documents don't spell out, and how the site handles them:
 
 ## Development
 
-The site is plain HTML, CSS and JavaScript modules, hosted on Cloudflare Pages. There is no build step and the site has no npm dependencies; Wrangler (Cloudflare's CLI) is the only dev dependency. The server code is Cloudflare Pages Functions in `functions/api/`: reading tournaments and players from badminfo, reading match times from Badminton England's tournament pages, the optional Google sign-in, saved players for signed-in accounts, and the audit trail, kept in a Cloudflare D1 (SQLite) database whose schema is in `migrations/`.
+The site is plain HTML, CSS and JavaScript modules, hosted on Cloudflare Pages. There is no build step and the site has no npm dependencies; Wrangler (Cloudflare's CLI) is the only dev dependency. The server code is Cloudflare Pages Functions in `functions/api/`: reading tournaments and players from badminfo, reading match times and player pages from Badminton England's site, the optional Google sign-in, saved players for signed-in accounts, and the audit trail, kept in a Cloudflare D1 (SQLite) database whose schema is in `migrations/`.
 
 ```sh
 npm install       # once, to install Wrangler
@@ -81,6 +85,8 @@ public/
   imported-group.js   turns a group imported from badminfo into calculator state, and works out its scoring
   laws.js             the Laws of Badminton page and its diagrams
   profiles.js         saved players in localStorage
+  analysis.js         a player's progress worked out from their match history (pure functions, unit tested)
+  analysis-page.js    the Analysis page and its rating chart
   i18n.js             language switching
   locales/*.js        UI strings: en, zh-Hant, ja, fr
   data/tc-2026.json   the whole T&Cs matrix, transcribed by hand
@@ -96,9 +102,12 @@ functions/api/
   tournament.js       GET /api/tournament?url=<badminfo link>: a tournament's round-robin groups
   player.js           GET /api/player?url=<badminfo player link>: a player's grades, ratings and BE number
   schedule.js         GET /api/schedule?be=&from=&to=: match times from Badminton England's tournament pages
+  analysis.js         GET /api/analysis?id=<badminfo player id>: match history, grades and medals, plus BE's ranking and win–loss
 lib/
   badminfo.js         reads badminfo's tournament and player JSON (only the id is taken from the link)
   schedule.js         reads match times from be.tournamentsoftware.com, accepting only necessary cookies
+  analysis.js         picks a player's match history, grades, predictions and medals out of badminfo's JSON
+  be-profile.js       reads a player's ranking, qualifying matches and win–loss from their BE page
   http.js             JSON responses, cookies and small helpers for the API
   audit.js            which actions and fields the audit trail keeps, and writing them
   google.js           Google sign-in (OAuth code flow; id_token claims checked)

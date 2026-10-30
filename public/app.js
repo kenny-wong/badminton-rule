@@ -4,6 +4,7 @@ import { CAPS, SCORING_PRESETS, averageMatchMinutes, exampleScores, gameWinner, 
 import { findGroup, fitsCalculator, groupState, importLabels, mergeResults, savedPlayersIn, scheduleFor, tournamentChoices, tournamentPreset, unscoredMatches } from './imported-group.js';
 import { MAX_PROFILES, addFromBadminfo, favouritesFirst, loadProfiles, moveProfile, toggleFavourite, loadSyncOwner, mergeProfiles, newProfile, playerChanges, profileFor, sanitizeProfiles, saveProfiles, saveSyncOwner, updateFromBadminfo } from './profiles.js';
 import { renderLaws } from './laws.js';
+import { renderAnalysis } from './analysis-page.js';
 import { MAX_GROUPS, groupNames, loadGroups, newGroup, sanitizeState, saveGroups } from './saved-groups.js';
 
 const view = document.getElementById('view');
@@ -401,6 +402,7 @@ function comparedPlayers() {
 }
 
 function persistProfiles() {
+  updateAnalysisTab();
   const saved = saveProfiles(profiles);
   const warning = document.getElementById('save-warning');
   if (warning) warning.hidden = saved;
@@ -469,6 +471,7 @@ async function pullProfiles() {
       await pushProfiles();
     }
     saveProfiles(profiles);
+    updateAnalysisTab();
     account.syncError = false;
   } catch {
     account.syncError = true;
@@ -578,6 +581,9 @@ function profileActions(profile) {
     profile.badminfoId
       ? h('a', { class: 'link-button', href: `https://badminfo.com/Player/${profile.badminfoId}`, target: '_blank', rel: 'noopener',
         title: t('players.badminfoProfile', { name }) }, 'badminfo ↗')
+      : null,
+    profile.badminfoId
+      ? h('a', { class: 'link-button', href: `#/analysis/${profile.badminfoId}`, title: t('players.analysisTitle', { name }) }, t('players.analysis'))
       : null,
     profile.badminfoId
       ? h('button', { type: 'button', class: 'small-button', title: t('players.ratingsRefresh', { name }), 'aria-label': t('players.ratingsRefresh', { name }),
@@ -2288,8 +2294,8 @@ async function renderAdmin(q = '') {
 
 // The audit trail's actions, in the order the legend lists them.
 const AUDIT_ACTIONS = ['view', 'player_add', 'player_edit', 'player_remove', 'player_update', 'player_favourite', 'player_reorder',
-  'tournament_load', 'group_import', 'group_refresh', 'match_refresh', 'group_save', 'group_delete', 'example_load', 'login', 'logout', 'login_failed'];
-const TAB_ROUTES = ['grades', 'tier', 'compare', 'check', 'groups', 'laws', 'notes'];
+  'tournament_load', 'group_import', 'group_refresh', 'match_refresh', 'group_save', 'group_delete', 'example_load', 'analysis_load', 'login', 'logout', 'login_failed'];
+const TAB_ROUTES = ['grades', 'tier', 'compare', 'check', 'analysis', 'groups', 'laws', 'notes'];
 let adminView = null; // { q, body }: the last audit trail fetched
 const adminOpen = new Set(); // collapsed rows the reader opened
 
@@ -2408,7 +2414,15 @@ function setActiveTab(name) {
   document.querySelectorAll('.tabs a').forEach((a) => a.setAttribute('aria-current', a.dataset.tab === name ? 'page' : 'false'));
 }
 
+// The Analysis tab appears only once a saved player came from a badminfo link: only they can be analysed.
+const analysable = () => profiles.filter((p) => p.badminfoId);
+function updateAnalysisTab() {
+  const tab = document.querySelector('.tabs a[data-tab="analysis"]');
+  if (tab) tab.hidden = !analysable().length;
+}
+
 function route({ focus = true } = {}) {
+  updateAnalysisTab();
   const [, section = 'grades', arg = '', ...rest] = location.hash.split('/');
   // Players used to be its own tab; it is now part of Can I enter?
   if (section === 'players') return location.replace('#/check');
@@ -2425,6 +2439,7 @@ function route({ focus = true } = {}) {
   else if (section === 'notes') renderNotes();
   else if (section === 'groups') renderGroups();
   else if (section === 'laws') renderLaws(view, { h, fill, setTitle });
+  else if (section === 'analysis') renderAnalysis(view, { h, fill, setTitle, players: analysable(), id: param.toLowerCase(), track });
   else if (section === 'admin') renderAdmin();
   else if (section === 'search') {
     if (searchInput.value !== param) searchInput.value = param;

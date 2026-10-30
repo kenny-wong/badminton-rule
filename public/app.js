@@ -574,7 +574,11 @@ function profileActions(profile) {
   }
   const name = profile.name || t('players.thisPlayer');
   return [
-    // Players added from a badminfo link (they keep its id) can update their ratings.
+    // Players added from a badminfo link (they keep its id) open their badminfo page and can update their ratings.
+    profile.badminfoId
+      ? h('a', { class: 'link-button', href: `https://badminfo.com/Player/${profile.badminfoId}`, target: '_blank', rel: 'noopener',
+        title: t('players.badminfoProfile', { name }) }, 'badminfo ↗')
+      : null,
     profile.badminfoId
       ? h('button', { type: 'button', class: 'small-button', title: t('players.ratingsRefresh', { name }), 'aria-label': t('players.ratingsRefresh', { name }),
         onclick: (e) => refreshRatings(profile, e.currentTarget) }, h('span', { 'aria-hidden': 'true' }, '↻ '), t('players.updateRating'))
@@ -809,7 +813,8 @@ function drawPlayerImport() {
 function playerImportPanel() {
   return h('div', { class: 'saved-groups import-panel player-import' },
     h('p', { class: 'palette-title' }, t('players.badminfoTitle')),
-    h('p', { class: 'muted import-hint' }, t('players.badminfoHint')),
+    h('p', { class: 'muted import-hint' }, t('players.badminfoHint'), ' ',
+      h('a', { href: 'https://badminfo.com/', target: '_blank', rel: 'noopener' }, t('players.badminfoOpen'))),
     h('div', { class: 'calc-controls import-form' },
       h('label', { class: 'visually-hidden', for: 'player-link' }, t('players.badminfoLabel')),
       h('input', {
@@ -2258,10 +2263,7 @@ function renderNotes() {
     h('p', {}, t('notes.p1')),
     h('p', {}, t('notes.p2')),
     h('p', {}, t('notes.translations')),
-    h('p', {}, tParts('notes.p3', { link: h('a', { href: data.source, rel: 'noopener' }, t('notes.sourceLink')) })),
-    h('h2', { class: 'section-title', id: 'privacy' }, t('notes.privacyTitle')),
-    h('p', {}, t('notes.privacy1')),
-    h('p', {}, t('notes.privacy2'))));
+    h('p', {}, tParts('notes.p3', { link: h('a', { href: data.source, rel: 'noopener' }, t('notes.sourceLink')) }))));
 }
 
 // The audit trail, for the site's owners only (ADMIN_EMAILS on the server).

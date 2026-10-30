@@ -1121,7 +1121,6 @@ details.palette[open] > summary::before { content: "▾"; }
 .account-bar .account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .account-bar .sync-error { color: var(--no); }
 a.small-button { display: inline-block; text-decoration: none; }
-.footer-privacy { margin-top: 8px; font-size: var(--fs-xs); }
 /* The audit trail. */
 .admin-totals { font-weight: 600; }
 .admin-table td, .admin-table th { font-size: var(--fs-sm); vertical-align: middle; white-space: nowrap; padding-top: 6px; padding-bottom: 6px; }

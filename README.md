@@ -16,7 +16,7 @@ Available in English, 繁體中文, 日本語 and Français.
 | **Tiers** | Read every rule for one tier: sanction fee, match format, rest periods, grade restrictions, seeding, coaching and so on. |
 | **Compare** | Compare one rule area across all tiers, with tiers that share the same rule grouped together. |
 | **My players** | Save players (gender, date of birth plus singles, doubles and mixed grades) and see, side by side, which tiers and age groups each can enter, and why. Add a player from their [badminfo.com](https://badminfo.com) link with their grades and badminfo ratings ("↻ Update rating" refreshes the ratings and grades later and says what changed, such as "Singles: since 30 Oct 2026, up from I to H"). Drag ⠿ to put your players in order, and star ☆ favourites: they stay at the top and are starred ★ on the Groups page. Optionally, sign in with Google to keep your saved players on all your devices. |
-| **Groups** | Learn how a round-robin group is ranked and how ties are broken. Then work out a group yourself: drag in saved players (singles or doubles), enter scores game by game, and get the standings, a results grid, and an analysis of what each player needs, down to "C must score at least 4 points". Save up to six groups in the browser so they are still there after a reload. Or paste a tournament link from [badminfo.com](https://badminfo.com) to fill in a real group's pairs and results: it lists the groups your saved players are in ("WS Group A (Chloe Wong)"; a player saved as just "Chloe" finds every Chloe), and "↻ Update" beside the matches brings in new results for the whole group. Under each match: when it is due or started, how long it took and the court (from Badminton England's own pages), and roughly when a new score was seen. Players added from badminfo can be picked to list their tournaments (the next few, or past ones too) and open one without its link. |
+| **Groups** | Learn how a round-robin group is ranked and how ties are broken. Then work out a group yourself: drag in saved players (singles or doubles), enter scores game by game, and get the standings, a results grid, and an analysis of what each player needs, down to "C must score at least 4 points". Save up to six groups in the browser so they are still there after a reload. Or paste a tournament link from [badminfo.com](https://badminfo.com) to fill in a real group's pairs and results: it lists the groups your saved players are in ("WS Group A (Chloe Wong)"; a player saved as just "Chloe" finds every Chloe), and "↻ Update" beside the matches brings in new results for the whole group. Under each match: its estimated start time (from Badminton England's own pages), and whether its score came in on time or how many minutes late it is. Players added from badminfo can be picked to list their tournaments (the next few, or past ones too) and open one without its link. |
 | **Laws** | The basic Laws of Badminton in plain words, from the BWF: the court, scoring, serving, where to serve from, in or out, faults, lets and breaks, with diagrams. It also shows the new 15-point scoring that starts on 4 January 2027. |
 | **Notes** | Read the general notes from the matrix and how this guide was put together. |
 
@@ -56,7 +56,7 @@ A few things the documents don't spell out, and how the site handles them:
 
 ## Development
 
-The site is plain HTML, CSS and JavaScript modules, hosted on Cloudflare Pages. There is no build step and the site has no npm dependencies; Wrangler (Cloudflare's CLI) is the only dev dependency. The server code is Cloudflare Pages Functions in `functions/api/`: reading tournaments and players from badminfo, the optional Google sign-in, saved players for signed-in accounts, and the audit trail, kept in a Cloudflare D1 (SQLite) database whose schema is in `migrations/`.
+The site is plain HTML, CSS and JavaScript modules, hosted on Cloudflare Pages. There is no build step and the site has no npm dependencies; Wrangler (Cloudflare's CLI) is the only dev dependency. The server code is Cloudflare Pages Functions in `functions/api/`: reading tournaments and players from badminfo, reading match times from Badminton England's tournament pages, the optional Google sign-in, saved players for signed-in accounts, and the audit trail, kept in a Cloudflare D1 (SQLite) database whose schema is in `migrations/`.
 
 ```sh
 npm install       # once, to install Wrangler
@@ -95,8 +95,10 @@ functions/api/
   admin/audit.js      the audit trail, for ADMIN_EMAILS only
   tournament.js       GET /api/tournament?url=<badminfo link>: a tournament's round-robin groups
   player.js           GET /api/player?url=<badminfo player link>: a player's grades, ratings and BE number
+  schedule.js         GET /api/schedule?be=&from=&to=: match times from Badminton England's tournament pages
 lib/
   badminfo.js         reads badminfo's tournament and player JSON (only the id is taken from the link)
+  schedule.js         reads match times from be.tournamentsoftware.com, accepting only necessary cookies
   http.js             JSON responses, cookies and small helpers for the API
   audit.js            which actions and fields the audit trail keeps, and writing them
   google.js           Google sign-in (OAuth code flow; id_token claims checked)

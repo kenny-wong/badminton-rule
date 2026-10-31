@@ -2325,7 +2325,12 @@ function drawAdmin() {
   const actionName = (a) => (AUDIT_ACTIONS.includes(a) ? t(`audit.${a}`) : a);
   const actionCell = (a) => h('span', { class: 'audit-action', title: AUDIT_ACTIONS.includes(a) ? t(`audit.${a}Desc`) : a }, actionName(a));
   const agentText = (g) => (g ? [t(`audit.d.${g.device}`), g.os, g.browser].filter(Boolean).join(' · ') : '');
-  const ipLink = (ip) => h('button', { type: 'button', class: 'link-button', onclick: () => renderAdmin(ip) }, ip || '?');
+  // IPv6 addresses show their first three groups ("2a02:c7c:b124 …"), the whole address as a tooltip.
+  const shortIp = (ip) => {
+    const head = ip.split('::')[0].split(':').slice(0, 3).join(':');
+    return ip.includes(':') && head && head !== ip ? `${head} …` : ip;
+  };
+  const ipLink = (ip) => h('button', { type: 'button', class: 'link-button', title: ip || '', onclick: () => renderAdmin(ip) }, ip ? shortIp(ip) : '?');
   const accountCell = (email) => (email ? h('button', { type: 'button', class: 'link-button', onclick: () => renderAdmin(email) }, email) : h('span', { class: 'muted' }, t('admin.anonymous')));
 
   // Fold repeats: the same action by the same IP and account within one minute.

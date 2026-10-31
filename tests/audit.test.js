@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { EVENTS, SERVER_EVENTS, cleanEvent, describeAgent, visitor } from '../lib/audit.js';
+import { EVENTS, SERVER_EVENTS, cleanEvent, describeAgent, mergeDevices, visitor } from '../lib/audit.js';
 import { isAdmin } from '../lib/session.js';
 import { onRequestPost as postEvent } from '../functions/api/events.js';
 import { onRequestGet as getPlayers, onRequestPut as putPlayers } from '../functions/api/players.js';
@@ -93,6 +93,17 @@ test('describeAgent names the device, system and browser', () => {
     ['', { device: 'desktop', os: '', browser: '' }],
   ];
   for (const [ua, expected] of cases) assert.deepEqual(describeAgent(ua), expected, ua);
+});
+
+test('mergeDevices drops repeats and devices another one already describes', () => {
+  const pc = { device: 'desktop', os: 'Windows 10/11', browser: 'Chrome 156' };
+  const botPc = { device: 'bot', os: 'Windows 10/11', browser: 'Chrome 156' };
+  const bot = { device: 'bot', os: '', browser: '' };
+  const phone = { device: 'mobile', os: 'iOS 27.0', browser: 'Chrome 156' };
+  assert.deepEqual(mergeDevices([botPc, pc, bot, phone, { ...pc }]), [botPc, pc, phone]);
+  assert.deepEqual(mergeDevices([bot, botPc]), [botPc]);
+  assert.deepEqual(mergeDevices([{ device: 'mobile', os: 'iOS 27.0', browser: '' }, phone, { device: 'mobile', os: 'Android 10', browser: 'Chrome 156' }]),
+    [phone, { device: 'mobile', os: 'Android 10', browser: 'Chrome 156' }]);
 });
 
 test('favourites and reordering are logged with their own fields', () => {

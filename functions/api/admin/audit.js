@@ -4,7 +4,7 @@
 // latest events, optionally only those of one IP or account.
 import { fail, json, serverError } from '../../../lib/http.js';
 import { isAdmin } from '../../../lib/session.js';
-import { describeAgent } from '../../../lib/audit.js';
+import { describeAgent, mergeDevices } from '../../../lib/audit.js';
 
 const LIMIT = 300;
 
@@ -31,10 +31,10 @@ ${v.email ?? ''}`;
     const devices = new Map();
     for (const row of agents.results) {
       const list = devices.get(visitor(row)) ?? [];
-      const agent = describeAgent(row.user_agent);
-      if (!list.some((a) => a.device === agent.device && a.os === agent.os && a.browser === agent.browser)) list.push(agent);
+      list.push(describeAgent(row.user_agent));
       devices.set(visitor(row), list);
     }
+    for (const [key, list] of devices) devices.set(key, mergeDevices(list));
     return json({
       totals: totals.results[0],
       visitors: visitors.results.map((v) => ({ ...v, devices: devices.get(visitor(v)) ?? [] })),
